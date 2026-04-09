@@ -1,2 +1,3 @@
 -- Migration meta
 INSERT INTO __drizzle_migrations (hash, created_at) VALUES ('0000_initial', unixepoch());
+INSERT INTO __drizzle_migrations (hash, created_at) VALUES ('0001_add_cover_image', unixepoch());

@@ -17,6 +17,7 @@ export async function GET(
     slug: post.slug,
     title: post.title,
     excerpt: post.excerpt,
+    coverImage: post.coverImage ?? "",
     content: post.content,
     tags: parsePostTags(post),
     published: post.published,
@@ -32,15 +33,15 @@ export async function PATCH(
   { params }: { params: Promise<{ slug: string }> }
 ) {
   const { slug } = await params;
-  const body: { title?: string; excerpt?: string; content?: string; tags?: string[]; published?: boolean } = await request.json();
-  const { title, excerpt, content, tags, published } = body;
+  const body: { title?: string; excerpt?: string; coverImage?: string; content?: string; tags?: string[]; published?: boolean } = await request.json();
+  const { title, excerpt, coverImage, content, tags, published } = body;
 
   const existing = await getPostBySlug(slug);
   if (!existing) {
     return NextResponse.json({ error: "Post not found" }, { status: 404 });
   }
 
-  await updatePost(slug, { title, excerpt, content, tags, published });
+  await updatePost(slug, { title, excerpt, coverImage, content, tags, published });
   return NextResponse.json({ success: true });
 }
 

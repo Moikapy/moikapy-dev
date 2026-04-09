@@ -5,6 +5,7 @@ export const posts = sqliteTable("posts", {
   slug: text("slug").notNull().unique(),
   title: text("title").notNull(),
   excerpt: text("excerpt").notNull().default(""),
+  coverImage: text("cover_image").default(""),
   content: text("content").notNull(),
   tags: text("tags").notNull().default("[]"), // JSON array stored as text
   published: integer("published", { mode: "boolean" }).notNull().default(false),

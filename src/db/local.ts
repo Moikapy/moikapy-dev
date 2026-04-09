@@ -32,6 +32,7 @@ export function getLocalDb() {
       slug TEXT NOT NULL UNIQUE,
       title TEXT NOT NULL,
       excerpt TEXT NOT NULL DEFAULT '',
+      cover_image TEXT DEFAULT '',
       content TEXT NOT NULL,
       tags TEXT NOT NULL DEFAULT '[]',
       published INTEGER NOT NULL DEFAULT 0,

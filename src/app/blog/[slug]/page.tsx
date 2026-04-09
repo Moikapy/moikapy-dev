@@ -20,15 +20,35 @@ export async function generateMetadata({ params }: BlogPostPageProps): Promise<M
   const post = await getPostBySlug(slug);
   if (!post) return {};
 
+  const ogImage = post.coverImage || `${siteConfig.url}/opengraph-image`;
+
   return {
     title: post.title,
-    description: post.excerpt,
+    description: post.excerpt || undefined,
     openGraph: {
       title: post.title,
-      description: post.excerpt,
+      description: post.excerpt || undefined,
       type: "article",
       publishedTime: post.createdAt,
+      modifiedTime: post.updatedAt,
       tags: parsePostTags(post),
+      images: [
+        {
+          url: ogImage,
+          width: 1200,
+          height: 630,
+          alt: post.title,
+        },
+      ],
+    },
+    twitter: {
+      card: "summary_large_image",
+      title: post.title,
+      description: post.excerpt || undefined,
+      images: [ogImage],
+    },
+    alternates: {
+      canonical: `${siteConfig.url}/blog/${slug}`,
     },
   };
 }
@@ -52,6 +72,17 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
       >
         ← Back to blog
       </Link>
+
+      {/* Cover image */}
+      {post.coverImage && (
+        <div className="mb-8 overflow-hidden rounded-xl">
+          <img
+            src={post.coverImage}
+            alt={post.title}
+            className="w-full object-cover aspect-[2/1]"
+          />
+        </div>
+      )}
 
       <header className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{post.title}</h1>

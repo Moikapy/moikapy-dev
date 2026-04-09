@@ -30,6 +30,7 @@ export default async function BlogPage() {
                 title: post.title,
                 date: post.createdAt,
                 excerpt: post.excerpt,
+                coverImage: post.coverImage,
                 tags: parsePostTags(post),
                 published: post.published,
                 readingTime: post.readingTime,

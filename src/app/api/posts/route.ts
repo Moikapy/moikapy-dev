@@ -12,6 +12,8 @@ export async function GET(request: NextRequest) {
         slug: p.slug,
         title: p.title,
         excerpt: p.excerpt,
+        coverImage: p.coverImage ?? "",
+        content: p.content,
         tags: parsePostTags(p),
         published: p.published,
         createdAt: p.createdAt,
@@ -27,8 +29,8 @@ export async function GET(request: NextRequest) {
 // POST /api/posts — create a new post
 export async function POST(request: NextRequest) {
   try {
-    const body: { slug: string; title: string; excerpt?: string; content: string; tags?: string[]; published?: boolean } = await request.json();
-    const { slug, title, excerpt, content, tags, published } = body;
+    const body: { slug: string; title: string; excerpt?: string; coverImage?: string; content: string; tags?: string[]; published?: boolean } = await request.json();
+    const { slug, title, excerpt, coverImage, content, tags, published } = body;
 
     if (!slug || !title || !content) {
       return NextResponse.json(
@@ -37,7 +39,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    await createPost({ slug, title, excerpt, content, tags, published });
+    await createPost({ slug, title, excerpt, coverImage, content, tags, published });
     return NextResponse.json({ success: true, slug }, { status: 201 });
   } catch (err: any) {
     if (err?.message?.includes("UNIQUE constraint")) {

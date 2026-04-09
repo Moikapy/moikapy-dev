@@ -9,6 +9,7 @@ interface PostCardProps {
     title: string;
     date: string;
     excerpt: string;
+    coverImage?: string | null;
     tags: string[];
     published: boolean;
     readingTime: string;
@@ -18,7 +19,16 @@ interface PostCardProps {
 export function PostCard({ post }: PostCardProps) {
   return (
     <Link href={`/blog/${post.slug}`}>
-      <Card className="group h-full transition-all hover:border-primary/50 hover:shadow-md">
+      <Card className="group h-full transition-all hover:border-primary/50 hover:shadow-md overflow-hidden">
+        {post.coverImage && (
+          <div className="aspect-[2/1] overflow-hidden">
+            <img
+              src={post.coverImage}
+              alt={post.title}
+              className="w-full h-full object-cover transition-transform group-hover:scale-105"
+            />
+          </div>
+        )}
         <CardHeader className="pb-3">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <time dateTime={post.date}>{format(new Date(post.date), "MMM d, yyyy")}</time>

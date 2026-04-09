@@ -87,6 +87,7 @@ export async function createPost(data: {
   slug: string;
   title: string;
   excerpt?: string;
+  coverImage?: string;
   content: string;
   tags?: string[];
   published?: boolean;
@@ -97,6 +98,7 @@ export async function createPost(data: {
     slug: data.slug,
     title: data.title,
     excerpt: data.excerpt ?? "",
+    coverImage: data.coverImage ?? null,
     content: data.content,
     tags: JSON.stringify(data.tags ?? []),
     published: data.published ?? false,
@@ -110,6 +112,7 @@ export async function updatePost(
   data: {
     title?: string;
     excerpt?: string;
+    coverImage?: string;
     content?: string;
     tags?: string[];
     published?: boolean;

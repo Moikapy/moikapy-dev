@@ -11,6 +11,7 @@ interface PostData {
   slug: string;
   title: string;
   excerpt: string;
+  coverImage?: string;
   content: string;
   tags: string[];
   published: boolean;
@@ -31,6 +32,7 @@ export function AdminClient() {
   const [editSlug, setEditSlug] = useState("");
   const [formTitle, setFormTitle] = useState("");
   const [formExcerpt, setFormExcerpt] = useState("");
+  const [formCoverImage, setFormCoverImage] = useState("");
   const [formContent, setFormContent] = useState("");
   const [formTags, setFormTags] = useState("");
   const [formPublished, setFormPublished] = useState(false);
@@ -57,6 +59,7 @@ export function AdminClient() {
     setEditSlug("");
     setFormTitle("");
     setFormExcerpt("");
+    setFormCoverImage("");
     setFormContent("");
     setFormTags("");
     setFormPublished(false);
@@ -71,6 +74,7 @@ export function AdminClient() {
     setEditSlug(post.slug);
     setFormTitle(post.title);
     setFormExcerpt(post.excerpt);
+    setFormCoverImage((post as PostData & { coverImage?: string }).coverImage ?? "");
     setFormContent(post.content);
     setFormTags(post.tags.join(", "));
     setFormPublished(post.published);
@@ -87,6 +91,7 @@ export function AdminClient() {
       slug: editSlug || formTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
       title: formTitle,
       excerpt: formExcerpt,
+      coverImage: formCoverImage || undefined,
       content: formContent,
       tags,
       published: formPublished,
@@ -259,6 +264,21 @@ export function AdminClient() {
             rows={2}
             className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring resize-none"
           />
+        </div>
+
+        {/* Cover Image URL */}
+        <div>
+          <label className="block text-sm font-medium mb-1.5">Cover Image URL</label>
+          <input
+            type="url"
+            value={formCoverImage}
+            onChange={(e) => setFormCoverImage(e.target.value)}
+            placeholder="https://example.com/image.jpg"
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring"
+          />
+          {formCoverImage && (
+            <img src={formCoverImage} alt="Cover preview" className="mt-2 rounded-md max-h-40 object-cover" />
+          )}
         </div>
 
         {/* Content */}
