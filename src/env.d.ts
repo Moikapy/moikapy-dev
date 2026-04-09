@@ -15,6 +15,7 @@ declare global {
     WORKER_SELF_REFERENCE?: Service;
     ADMIN_PASSWORD_HASH?: string;
     SESSION_SECRET?: string;
+    WALLET_ADDRESS?: string;
   }
 }
 

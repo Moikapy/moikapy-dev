@@ -79,10 +79,12 @@ async function verifySessionToken(token: string, secret: string): Promise<boolea
 
 export function isAdminRequest(request: NextRequest): boolean {
   const pathname = request.nextUrl.pathname;
-  return (
-    pathname.startsWith("/admin") ||
-    pathname.startsWith("/api/posts")
-  );
+  // Admin pages always require auth
+  if (pathname.startsWith("/admin")) return true;
+  // API write operations require auth
+  if (pathname.startsWith("/api/posts") && request.method !== "GET") return true;
+  // Everything else is publicly readable (x402 handles payment for external consumers)
+  return false;
 }
 
 export function isLoginRequest(request: NextRequest): boolean {

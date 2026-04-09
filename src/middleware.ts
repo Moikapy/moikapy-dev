@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { isAdminRequest, isLoginRequest, isPublicAsset, isAuthenticated } from "@/lib/auth";
 
 export const config = {
-  matcher: ["/admin/:path*", "/api/posts/:path*", "/api/auth/:path*"],
+  matcher: ["/admin/:path*", "/api/posts/:path*", "/api/auth/:path*", "/api/knowledge"],
 };
 
 export async function middleware(request: NextRequest) {
