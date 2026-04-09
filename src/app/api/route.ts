@@ -64,6 +64,10 @@ export async function GET() {
       },
       docs: "https://docs.cdp.coinbase.com/x402/quickstart-for-buyers",
     },
+    documentation: {
+      skillMd: "https://moikapy.dev/SKILL.md",
+      llmsTxt: "https://moikapy.dev/llms.txt",
+    },
     discoverable: true,
     bazaar: "https://bazaar.x402.org",
   });

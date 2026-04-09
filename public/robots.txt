@@ -1,0 +1,15 @@
+User-agent: *
+Allow: /
+
+# Paid API (x402 protocol)
+Allow: /api/
+Allow: /SKILL.md
+Allow: /llms.txt
+Allow: /feed/rss.xml
+
+# Admin (disallow)
+Disallow: /admin/
+Disallow: /api/auth/
+Disallow: /api/posts/*/  # Write operations require auth
+
+Sitemap: https://moikapy.dev/sitemap.xml

@@ -1,0 +1,24 @@
+# moikapy.dev
+
+> AI engineer, gamer, 3D printing. Blog about AI engineering, gaming, building cool stuff.
+
+## Paid API
+
+- /api/knowledge?q=... — Search knowledge base ($0.02, x402/USDC on Base)
+- /api/posts — List posts ($0.01, x402/USDC on Base, free from own site)
+- /api — Full API docs (free)
+
+## Free Content
+
+- /blog — Blog listing
+- /blog/{slug} — Individual posts
+- /feed/rss.xml — RSS feed
+- /SKILL.md — Full agent & API guide
+
+## Payment
+
+x402 protocol. USDC on Base (chain 8453). See /api for details.
+
+## Details
+
+- See /SKILL.md for complete API documentation and integration guide
