@@ -1,0 +1,10 @@
+export { default as GithubIcon } from "./github";
+export { default as HuggingfaceIcon } from "./huggingface";
+export { default as TwitterIcon } from "./twitter";
+export { default as YoutubeIcon } from "./youtube";
+export { default as TwitchIcon } from "./twitch";
+export { default as KickIcon } from "./kick";
+export { default as InstagramIcon } from "./instagram";
+export { default as RumbleIcon } from "./rumble";
+export { default as RssIcon } from "./rss";
+export { default as NostrIcon } from "./nostr";

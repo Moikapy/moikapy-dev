@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
+@plugin "@tailwindcss/typography";
 
 @custom-variant dark (&:is(.dark *));
 
@@ -127,4 +128,36 @@
   html {
     @apply font-sans;
   }
+}
+
+/* Blog prose styling */
+.prose h1 {
+  @apply text-3xl font-bold tracking-tight mt-8 mb-4;
+}
+.prose h2 {
+  @apply text-2xl font-semibold tracking-tight mt-8 mb-3;
+}
+.prose h3 {
+  @apply text-xl font-semibold mt-6 mb-2;
+}
+.prose p {
+  @apply leading-7 mb-4;
+}
+.prose ul {
+  @apply list-disc pl-6 mb-4 space-y-1;
+}
+.prose ol {
+  @apply list-decimal pl-6 mb-4 space-y-1;
+}
+.prose code {
+  @apply rounded bg-muted px-1.5 py-0.5 text-sm font-mono;
+}
+.prose strong {
+  @apply font-semibold;
+}
+.prose em {
+  @apply italic;
+}
+.prose a {
+  @apply text-primary underline underline-offset-4 hover:text-primary/80;
 }

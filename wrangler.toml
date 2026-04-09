@@ -1,0 +1,23 @@
+name = "moikapy-dev"
+main = ".open-next/worker.js"
+compatibility_date = "2026-04-08"
+compatibility_flags = ["nodejs_compat"]
+
+[assets]
+directory = ".open-next/assets"
+binding = "ASSETS"
+
+[[services]]
+binding = "WORKER_SELF_REFERENCE"
+service = "moikapy-dev"
+
+# D1 database for blog posts
+[[d1_databases]]
+binding = "DB"
+database_name = "moikapy-blog"
+database_id = "56e72ffd-263c-49e6-991a-bcd5a9df3670"
+migrations_dir = "drizzle"
+
+# Secrets (set via `wrangler secret put`):
+#   ADMIN_PASSWORD_HASH  - SHA-256 hash of your admin password
+#   SESSION_SECRET       - Random hex string for signing session cookies
