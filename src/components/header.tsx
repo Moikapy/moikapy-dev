@@ -54,7 +54,7 @@ export function Header() {
   }, [mobileOpen]);
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-sm">
+    <header className="sticky top-0 z-[100] w-full border-b border-border/40 bg-background/80 backdrop-blur-sm">
       <div className="mx-auto flex h-16 max-w-4xl items-center justify-between px-6">
         <Link href="/" className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm">
@@ -116,11 +116,11 @@ export function Header() {
         <>
           {/* Backdrop */}
           <div
-            className="fixed inset-0 z-40 bg-black/50 md:hidden"
+            className="fixed inset-0 z-[60] bg-black/50 md:hidden"
             onClick={() => setMobileOpen(false)}
           />
           {/* Panel */}
-          <div className="fixed inset-y-0 right-0 z-50 w-72 bg-background border-l border-border p-6 md:hidden flex flex-col">
+          <div className="fixed inset-y-0 right-0 z-[70] w-72 bg-background border-l border-border p-6 md:hidden flex flex-col">
             <div className="flex items-center justify-between mb-6">
               <span className="text-lg font-bold">{config.author}</span>
               <button
