@@ -8,6 +8,7 @@ import { siteConfig } from "@/lib/config";
 import Link from "next/link";
 import { remark } from "remark";
 import html from "remark-html";
+import { ReactionBar } from "@/components/reaction-bar";
 
 interface BlogPostPageProps {
   params: Promise<{ slug: string }>;
@@ -108,6 +109,12 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         className="prose prose-neutral dark:prose-invert max-w-none"
         dangerouslySetInnerHTML={{ __html: htmlContent }}
       />
+
+      {/* Reactions */}
+      <div className="mt-12 pt-8 border-t border-border">
+        <h3 className="text-sm font-medium text-muted-foreground mb-3">How did this post make you feel?</h3>
+        <ReactionBar slug={post.slug} />
+      </div>
     </article>
   );
 }

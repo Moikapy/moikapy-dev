@@ -13,5 +13,14 @@ export const posts = sqliteTable("posts", {
   updatedAt: text("updated_at").notNull().$defaultFn(() => new Date().toISOString()),
 });
 
+export const reactions = sqliteTable("reactions", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  postSlug: text("post_slug").notNull(),
+  emoji: text("emoji").notNull(),
+  visitorHash: text("visitor_hash").notNull(),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+});
+
 export type Post = typeof posts.$inferSelect;
 export type NewPost = typeof posts.$inferInsert;
+export type Reaction = typeof reactions.$inferSelect;
