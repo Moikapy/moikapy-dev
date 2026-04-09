@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { createPortal } from "react-dom";
 import Link from "next/link";
 import { siteConfig, socialLabels, type SocialKey } from "@/lib/config";
 import {
@@ -54,7 +55,7 @@ export function Header() {
   }, [mobileOpen]);
 
   return (
-    <header className="sticky top-0 z-[100] w-full border-b border-border/40 bg-background/80 backdrop-blur-sm">
+    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-sm">
       <div className="mx-auto flex h-16 max-w-4xl items-center justify-between px-6">
         <Link href="/" className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm">
@@ -111,76 +112,78 @@ export function Header() {
         </button>
       </div>
 
-      {/* Mobile menu */}
-      {mobileOpen && (
-        <>
-          {/* Backdrop */}
-          <div
-            className="fixed inset-0 z-[60] bg-black/50 md:hidden"
-            onClick={() => setMobileOpen(false)}
-          />
-          {/* Panel */}
-          <div className="fixed inset-y-0 right-0 z-[70] w-72 bg-background border-l border-border p-6 md:hidden flex flex-col">
-            <div className="flex items-center justify-between mb-6">
-              <span className="text-lg font-bold">{config.author}</span>
-              <button
-                type="button"
-                className="rounded-md p-2 text-muted-foreground hover:text-foreground"
-                onClick={() => setMobileOpen(false)}
-                aria-label="Close menu"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
+      {/* Mobile menu — portaled to body so z-index works above page content */}
+      {mobileOpen && typeof window !== "undefined" &&
+        createPortal(
+          <>
+            {/* Backdrop */}
+            <div
+              className="fixed inset-0 z-[9998] bg-black/50 md:hidden"
+              onClick={() => setMobileOpen(false)}
+            />
+            {/* Panel */}
+            <div className="fixed inset-y-0 right-0 z-[9999] w-72 bg-background border-l border-border p-6 md:hidden flex flex-col">
+              <div className="flex items-center justify-between mb-6">
+                <span className="text-lg font-bold">{config.author}</span>
+                <button
+                  type="button"
+                  className="rounded-md p-2 text-muted-foreground hover:text-foreground"
+                  onClick={() => setMobileOpen(false)}
+                  aria-label="Close menu"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
 
-            <nav className="flex flex-col gap-1">
-              <Link
-                href="/"
-                className="rounded-md px-3 py-2.5 text-base font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-accent"
-                onClick={() => setMobileOpen(false)}
-              >
-                Home
-              </Link>
-              <Link
-                href="/blog"
-                className="rounded-md px-3 py-2.5 text-base font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-accent"
-                onClick={() => setMobileOpen(false)}
-              >
-                Blog
-              </Link>
-              <Link
-                href="/traces"
-                className="rounded-md px-3 py-2.5 text-base font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-accent"
-                onClick={() => setMobileOpen(false)}
-              >
-                Traces
-              </Link>
-            </nav>
+              <nav className="flex flex-col gap-1">
+                <Link
+                  href="/"
+                  className="rounded-md px-3 py-2.5 text-base font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-accent"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  Home
+                </Link>
+                <Link
+                  href="/blog"
+                  className="rounded-md px-3 py-2.5 text-base font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-accent"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  Blog
+                </Link>
+                <Link
+                  href="/traces"
+                  className="rounded-md px-3 py-2.5 text-base font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-accent"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  Traces
+                </Link>
+              </nav>
 
-            <div className="mt-6 pt-6 border-t border-border">
-              <p className="text-xs font-medium text-muted-foreground mb-3">Follow</p>
-              <div className="flex flex-col gap-1">
-                {(Object.keys(config.socials) as SocialKey[]).map((key) => {
-                  const Icon = iconMap[key];
-                  return (
-                    <a
-                      key={key}
-                      href={config.socials[key]}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground hover:bg-accent"
-                      onClick={() => setMobileOpen(false)}
-                    >
-                      <Icon className="h-4 w-4" />
-                      {socialNames[key]}
-                    </a>
-                  );
-                })}
+              <div className="mt-6 pt-6 border-t border-border">
+                <p className="text-xs font-medium text-muted-foreground mb-3">Follow</p>
+                <div className="flex flex-col gap-1">
+                  {(Object.keys(config.socials) as SocialKey[]).map((key) => {
+                    const Icon = iconMap[key];
+                    return (
+                      <a
+                        key={key}
+                        href={config.socials[key]}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center gap-3 rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground hover:bg-accent"
+                        onClick={() => setMobileOpen(false)}
+                      >
+                        <Icon className="h-4 w-4" />
+                        {socialNames[key]}
+                      </a>
+                    );
+                  })}
+                </div>
               </div>
             </div>
-          </div>
-        </>
-      )}
+          </>,
+          document.body
+        )}
     </header>
   );
 }
