@@ -198,6 +198,18 @@ No explicit rate limits. Abuse will result in IP-level blocking. Be reasonable â
 
 This API is listed on the [x402 Bazaar](https://bazaar.x402.org) for agent discovery.
 
+## Token
+
+**$KAPY** is the official token of moikapy.dev â€” support the builder, fuel the Lair.
+
+| Field | Value |
+|-------|-------|
+| Symbol | KAPY |
+| Contract | `0xb09220649657DC919d643060DcA998511B4cb1CA` |
+| Network | Base (chain 8453) |
+| Buy/Trade | [Flaunch](https://flaunch.gg/base/coins/0xb09220649657DC919d643060DcA998511B4cb1CA) |
+| Chart | [DexScreener](https://dexscreener.com/base/0xb09220649657DC919d643060DcA998511B4cb1CA) |
+
 ## Contact
 
 - Blog: https://moikapy.dev

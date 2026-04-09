@@ -19,6 +19,11 @@
 
 x402 protocol. USDC on Base (chain 8453). See /api for details.
 
+## Token
+
+- $KAPY on Base: 0xb09220649657DC919d643060DcA998511B4cb1CA
+- Buy: https://flaunch.gg/base/coins/0xb09220649657DC919d643060DcA998511B4cb1CA
+
 ## Details
 
 - See /SKILL.md for complete API documentation and integration guide

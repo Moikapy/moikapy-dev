@@ -26,6 +26,16 @@ export interface PaymentConfig {
 // Coinbase-hosted facilitator for verification
 const FACILITATOR_URL = "https://facilitator.x402.org";
 
+// KAPY token contract on Base
+export const KAPY_TOKEN = {
+  name: "KAPY",
+  symbol: "KAPY",
+  address: "0xb09220649657DC919d643060DcA998511B4cb1CA",
+  network: "Base",
+  chainId: 8453,
+  url: "https://flaunch.gg/base/coins/0xb09220649657DC919d643060DcA998511B4cb1CA",
+} as const;
+
 // Parse price string like "$0.01" to atomic units (6 decimals for USDC)
 function parsePriceToAtomic(priceStr: string): string {
   const dollars = parseFloat(priceStr.replace("$", ""));

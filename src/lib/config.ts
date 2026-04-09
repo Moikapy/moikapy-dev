@@ -25,6 +25,16 @@ export const siteConfig = {
       "wss://relay.nostr.band",
     ],
   },
+  token: {
+    name: "KAPY",
+    symbol: "KAPY",
+    address: "0xb09220649657DC919d643060DcA998511B4cb1CA",
+    network: "Base",
+    chainId: 8453,
+    url: "https://flaunch.gg/base/coins/0xb09220649657DC919d643060DcA998511B4cb1CA",
+    dexScreener: "https://dexscreener.com/base/0xb09220649657DC919d643060DcA998511B4cb1CA",
+    description: "The moikapy token — support the builder, fuel the Lair.",
+  },
 } as const;
 
 export type SocialKey = keyof typeof siteConfig.socials;

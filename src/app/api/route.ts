@@ -15,6 +15,14 @@ export async function GET() {
       token: "USDC",
       asset: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
     },
+    token: {
+      name: "KAPY",
+      symbol: "KAPY",
+      address: "0xb09220649657DC919d643060DcA998511B4cb1CA",
+      network: "Base",
+      url: "https://flaunch.gg/base/coins/0xb09220649657DC919d643060DcA998511B4cb1CA",
+      dexScreener: "https://dexscreener.com/base/0xb09220649657DC919d643060DcA998511B4cb1CA",
+    },
     endpoints: {
       "/api/posts": {
         method: "GET",
