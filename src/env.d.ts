@@ -6,6 +6,7 @@ declare global {
     interface ProcessEnv {
       ADMIN_PASSWORD_HASH?: string;
       SESSION_SECRET?: string;
+      NEXT_PUBLIC_CF_BEACON_TOKEN?: string;
     }
   }
 

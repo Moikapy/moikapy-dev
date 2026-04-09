@@ -66,6 +66,14 @@ export default function RootLayout({
           <Footer />
         </div>
         <ServiceWorkerRegistrar />
+        {/* Cloudflare Web Analytics */}
+        {process.env.NEXT_PUBLIC_CF_BEACON_TOKEN && (
+          <script
+            defer
+            src="https://static.cloudflareinsights.com/beacon.min.js"
+            data-cf-beacon={`{"token": "${process.env.NEXT_PUBLIC_CF_BEACON_TOKEN}"}`}
+          />
+        )}
       </body>
     </html>
   );

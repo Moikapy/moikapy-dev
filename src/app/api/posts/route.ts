@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAllPublishedPosts, getAllPosts, createPost, parsePostTags } from "@/lib/posts";
 import { withPayment, isSiteInternalRequest } from "@/lib/x402-lite";
+import { logPaymentRequired } from "@/lib/analytics";
 
 export const dynamic = "force-dynamic";
 
@@ -80,6 +81,7 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
     return handleGetInternal(request);
   }
   // External requests require payment
+  logPaymentRequired("/api/posts", "$0.01");
   return paidGetHandler(request);
 }
 

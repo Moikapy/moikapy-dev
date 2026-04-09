@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getAllPublishedPosts, parsePostTags } from "@/lib/posts";
 import { withPayment, isSiteInternalRequest } from "@/lib/x402-lite";
+import { logPaymentRequired } from "@/lib/analytics";
 
 export const dynamic = "force-dynamic";
 
@@ -96,4 +97,7 @@ export const GET = withPayment(knowledgeHandler, {
   network: "eip155:8453",
   description: "Search moikapy's knowledge base — AI engineering, gaming, 3D printing",
   mimeType: "application/json",
-}, isSiteInternalRequest);
+}, (req) => {
+  logPaymentRequired("/api/knowledge", "$0.02");
+  return isSiteInternalRequest(req);
+});

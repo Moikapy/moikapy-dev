@@ -82,10 +82,6 @@ export function ReactionBar({ slug }: ReactionBarProps) {
 
   return (
     <div>
-      <h3 className="text-sm font-medium text-muted-foreground mb-3">
-        How did this post make you feel?
-      </h3>
-
       <div className="flex flex-wrap items-center gap-2">
         {/* Active reaction chips */}
         {activeEmojis.map((emoji) => {
