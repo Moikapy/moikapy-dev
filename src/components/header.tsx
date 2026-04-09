@@ -16,6 +16,7 @@ import {
 } from "@/components/icons";
 import { siteConfig as config } from "@/lib/config";
 import { Menu, X } from "lucide-react";
+import Image from "next/image";
 
 const iconMap: Record<SocialKey, React.ComponentType<React.SVGProps<SVGSVGElement>>> = {
   github: GithubIcon,
@@ -58,9 +59,14 @@ export function Header() {
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-sm">
       <div className="mx-auto flex h-16 max-w-4xl items-center justify-between px-4 sm:px-6">
         <Link href="/" className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-sm">
-            M
-          </div>
+          <Image
+            src="/capybara-256.webp"
+            alt="moikapy capybara"
+            width={36}
+            height={36}
+            className="rounded-lg"
+            priority
+          />
           <div className="flex flex-col">
             <span className="text-sm font-bold leading-tight">{config.author}</span>
             <span className="text-[10px] font-medium text-muted-foreground leading-tight">
@@ -124,7 +130,10 @@ export function Header() {
             {/* Panel */}
             <div className="fixed inset-y-0 right-0 z-[9999] w-[85vw] max-w-[288px] bg-background border-l border-border p-5 md:hidden flex flex-col">
               <div className="flex items-center justify-between mb-6">
-                <span className="text-lg font-bold">{config.author}</span>
+                <div className="flex items-center gap-3">
+                  <img src="/capybara-128.webp" alt="moikapy" className="h-8 w-8 rounded-lg" />
+                  <span className="text-lg font-bold">{config.author}</span>
+                </div>
                 <button
                   type="button"
                   className="rounded-md p-2 text-muted-foreground hover:text-foreground"

@@ -13,9 +13,7 @@ export function Footer() {
           rel="noopener noreferrer"
           className="group flex items-center gap-2.5 rounded-lg border border-orange-500/30 bg-orange-500/5 px-3 py-2 transition-colors hover:border-orange-500/50 hover:bg-orange-500/10"
         >
-          <span className="flex h-7 w-7 items-center justify-center rounded-md bg-orange-500 text-white text-xs font-bold">
-            K
-          </span>
+          <img src="/capybara-128.webp" alt="KAPY" className="h-7 w-7 rounded-md" />
           <div className="flex flex-col">
             <span className="text-sm font-semibold group-hover:text-orange-500 transition-colors">
               $KAPY
