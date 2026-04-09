@@ -10,6 +10,14 @@ export function Footer() {
           © {new Date().getFullYear()} {siteConfig.author}. Built with Next.js &amp; deployed on Cloudflare.
         </p>
         <div className="flex items-center gap-3">
+          <a
+            href="/api"
+            className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
+            aria-label="API"
+          >
+            <span className="hidden sm:inline">API 💰</span>
+            <span className="sm:hidden">💰</span>
+          </a>
           <Link
             href="/feed/rss.xml"
             className="flex items-center gap-1.5 rounded-md px-2 py-1 text-sm text-muted-foreground transition-colors hover:text-foreground"
