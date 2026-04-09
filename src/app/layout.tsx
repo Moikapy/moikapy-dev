@@ -66,6 +66,7 @@ export default function RootLayout({
           <Footer />
         </div>
         <ServiceWorkerRegistrar />
+        <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "d70b9eb899084d61a551c912de89c59b"}' />
       </body>
     </html>
   );
