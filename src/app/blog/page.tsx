@@ -12,7 +12,7 @@ export default async function BlogPage() {
   const posts = await getAllPublishedPosts();
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-16">
+    <div className="mx-auto max-w-4xl px-4 sm:px-6 py-16">
       <h1 className="text-3xl font-bold tracking-tight">Blog</h1>
       <p className="mt-2 text-muted-foreground">
         Writing about AI engineering, gaming, and the projects I&apos;m building.

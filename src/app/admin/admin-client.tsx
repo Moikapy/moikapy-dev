@@ -144,7 +144,7 @@ export function AdminClient() {
   // ── List View ─────────────────────────────────────────────
   if (mode === "list") {
     return (
-      <div className="mx-auto max-w-4xl px-6 py-8">
+      <div className="mx-auto max-w-4xl px-4 sm:px-6 py-8">
         <div className="flex items-center justify-between mb-6">
           <h1 className="text-2xl font-bold">Admin — Posts</h1>
           <div className="flex items-center gap-2">
@@ -172,9 +172,9 @@ export function AdminClient() {
           <div className="space-y-3">
             {posts.map((post) => (
               <Card key={post.slug} className="transition-colors hover:border-primary/40">
-                <CardContent className="flex items-center justify-between py-4">
+                <CardContent className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 py-4">
                   <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
+                    <div className="flex flex-wrap items-center gap-2">
                       <h3 className="font-medium truncate">{post.title}</h3>
                       {post.published ? (
                         <Badge variant="default" className="text-[10px]">Published</Badge>
@@ -182,11 +182,11 @@ export function AdminClient() {
                         <Badge variant="secondary" className="text-[10px]">Draft</Badge>
                       )}
                     </div>
-                    <p className="text-xs text-muted-foreground mt-0.5">
+                    <p className="text-xs text-muted-foreground mt-0.5 truncate">
                       /{post.slug} · {post.readingTime} · {new Date(post.updatedAt).toLocaleDateString()}
                     </p>
                   </div>
-                  <div className="flex items-center gap-2 ml-4">
+                  <div className="flex items-center gap-2 sm:ml-4">
                     <Button variant="ghost" size="sm" onClick={() => startEdit(post)}>
                       Edit
                     </Button>
@@ -210,7 +210,7 @@ export function AdminClient() {
 
   // ── Editor View (create / edit) ───────────────────────────
   return (
-    <div className="mx-auto max-w-3xl px-6 py-8">
+    <div className="mx-auto max-w-3xl px-4 sm:px-6 py-8">
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-bold">
           {mode === "create" ? "New Post" : "Edit Post"}

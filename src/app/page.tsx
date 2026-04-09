@@ -10,7 +10,7 @@ export default async function Home() {
   const recentPosts = posts.slice(0, 6);
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-16">
+    <div className="mx-auto max-w-4xl px-4 sm:px-6 py-16">
       {/* Hero */}
       <section className="mb-16">
         <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">

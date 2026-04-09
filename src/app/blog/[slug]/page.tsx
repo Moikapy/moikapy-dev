@@ -45,7 +45,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
   const htmlContent = (await remark().use(html).process(post.content)).toString();
 
   return (
-    <article className="mx-auto max-w-2xl px-6 py-16">
+    <article className="mx-auto max-w-2xl px-4 sm:px-6 py-16">
       <Link
         href="/blog"
         className="mb-8 inline-flex items-center text-sm text-muted-foreground transition-colors hover:text-foreground"

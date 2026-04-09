@@ -5,7 +5,7 @@ import { RssIcon, NostrIcon } from "@/components/icons";
 export function Footer() {
   return (
     <footer className="border-t border-border/40">
-      <div className="mx-auto flex max-w-4xl items-center justify-between px-6 py-8">
+      <div className="mx-auto flex max-w-4xl items-center justify-between px-4 sm:px-6 py-8">
         <p className="text-sm text-muted-foreground">
           © {new Date().getFullYear()} {siteConfig.author}. Built with Next.js &amp; deployed on Cloudflare.
         </p>

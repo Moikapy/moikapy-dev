@@ -57,7 +57,7 @@ export default async function TracesPage() {
     );
   } catch {
     return (
-      <div className="mx-auto max-w-4xl px-6 py-16">
+      <div className="mx-auto max-w-4xl px-4 sm:px-6 py-16">
         <h1 className="text-3xl font-bold tracking-tight">Traces</h1>
         <p className="mt-4 text-muted-foreground">
           Unable to load traces from Hugging Face right now. Please try again later.
@@ -67,7 +67,7 @@ export default async function TracesPage() {
   }
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-16">
+    <div className="mx-auto max-w-4xl px-4 sm:px-6 py-16">
       <h1 className="text-3xl font-bold tracking-tight">Traces</h1>
       <p className="mt-2 text-muted-foreground">
         Real coding agent sessions from building{" "}

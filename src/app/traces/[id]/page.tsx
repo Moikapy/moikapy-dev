@@ -51,7 +51,7 @@ export default async function TracePage({ params }: TracePageProps) {
   const model = getTraceModel(trace);
 
   return (
-    <div className="mx-auto max-w-4xl px-6 py-16">
+    <div className="mx-auto max-w-4xl px-4 sm:px-6 py-16">
       <Link
         href="/traces"
         className="mb-6 inline-flex items-center text-sm text-muted-foreground transition-colors hover:text-foreground"
