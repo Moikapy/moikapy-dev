@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { isAdminRequest, isLoginRequest, isPublicAsset, isAuthenticated } from "@/lib/auth";
 
 export const config = {
-  matcher: ["/admin/:path*", "/api/posts/:path*", "/api/auth/:path*", "/api/knowledge"],
+  matcher: ["/admin/:path*", "/api/posts/:path*", "/api/auth/:path*", "/api/knowledge", "/api/ai/:path*"],
 };
 
 export async function middleware(request: NextRequest) {
@@ -18,6 +18,15 @@ export async function middleware(request: NextRequest) {
 
   // Allow auth API routes (login/logout handle their own auth)
   if (request.nextUrl.pathname.startsWith("/api/auth/")) {
+    return NextResponse.next();
+  }
+
+  // AI routes require auth regardless of method
+  if (request.nextUrl.pathname.startsWith("/api/ai/")) {
+    const authenticated = await isAuthenticated(request);
+    if (!authenticated) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
     return NextResponse.next();
   }
 

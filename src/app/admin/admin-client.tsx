@@ -1,7 +1,7 @@
 "use client";
 
 import { TiptapEditor } from "@/components/tiptap-editor";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -20,7 +20,17 @@ interface PostData {
   readingTime: string;
 }
 
+interface AISuggestion {
+  title: string;
+  slug: string;
+  excerpt: string;
+}
+
 type EditorMode = "list" | "edit" | "create";
+
+function slugify(text: string): string {
+  return text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "");
+}
 
 export function AdminClient() {
   const [posts, setPosts] = useState<PostData[]>([]);
@@ -36,6 +46,11 @@ export function AdminClient() {
   const [formContent, setFormContent] = useState("");
   const [formTags, setFormTags] = useState("");
   const [formPublished, setFormPublished] = useState(false);
+
+  // AI suggestion state
+  const [aiSuggesting, setAiSuggesting] = useState(false);
+  const [aiSuggestion, setAiSuggestion] = useState<AISuggestion | null>(null);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   const fetchPosts = useCallback(async () => {
     try {
@@ -55,6 +70,16 @@ export function AdminClient() {
     fetchPosts();
   }, [fetchPosts]);
 
+  // Set of existing slugs for collision detection
+  const existingSlugs = useMemo(() => new Set(posts.map((p) => p.slug)), [posts]);
+
+  // The current slug value shown in the field
+  const currentSlug = mode === "create"
+    ? (editSlug || slugify(formTitle))
+    : editSlug;
+
+  const slugCollision = mode === "create" && currentSlug && existingSlugs.has(currentSlug);
+
   function resetForm() {
     setEditSlug("");
     setFormTitle("");
@@ -63,6 +88,8 @@ export function AdminClient() {
     setFormContent("");
     setFormTags("");
     setFormPublished(false);
+    setAiSuggestion(null);
+    setAiError(null);
   }
 
   function startCreate() {
@@ -78,7 +105,51 @@ export function AdminClient() {
     setFormContent(post.content);
     setFormTags(post.tags.join(", "));
     setFormPublished(post.published);
+    setAiSuggestion(null);
+    setAiError(null);
     setMode("edit");
+  }
+
+  async function handleAiSuggest() {
+    if (!formContent.trim()) {
+      setAiError("Write some content first");
+      return;
+    }
+
+    setAiSuggesting(true);
+    setAiError(null);
+    setAiSuggestion(null);
+
+    try {
+      const res = await fetch("/api/ai/suggest", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          content: formContent,
+          title: formTitle || undefined,
+        }),
+      });
+
+      if (!res.ok) {
+        const err: { error?: string } = await res.json();
+        setAiError(err.error || "Failed to get suggestion");
+        return;
+      }
+
+      const suggestion: AISuggestion = await res.json();
+      setAiSuggestion(suggestion);
+    } catch {
+      setAiError("Network error");
+    } finally {
+      setAiSuggesting(false);
+    }
+  }
+
+  function applySuggestion(field: "title" | "slug" | "excerpt") {
+    if (!aiSuggestion) return;
+    if (field === "title") setFormTitle(aiSuggestion.title);
+    if (field === "slug") setEditSlug(aiSuggestion.slug);
+    if (field === "excerpt") setFormExcerpt(aiSuggestion.excerpt);
   }
 
   async function handleSave() {
@@ -88,7 +159,7 @@ export function AdminClient() {
       .map((t) => t.trim())
       .filter(Boolean);
     const body = {
-      slug: editSlug || formTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, ""),
+      slug: editSlug || slugify(formTitle),
       title: formTitle,
       excerpt: formExcerpt,
       coverImage: formCoverImage || undefined,
@@ -245,13 +316,20 @@ export function AdminClient() {
           </label>
           <input
             type="text"
-            value={mode === "create" ? (editSlug || formTitle.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "")) : editSlug}
+            value={currentSlug}
             onChange={(e) => mode === "create" && setEditSlug(e.target.value)}
             readOnly={mode === "edit"}
             placeholder="my-awesome-post"
-            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50"
+            className={`w-full rounded-md border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ring disabled:opacity-50 ${
+              slugCollision ? "border-destructive ring-1 ring-destructive" : "border-input"
+            }`}
             disabled={mode === "edit"}
           />
+          {slugCollision && (
+            <p className="mt-1 text-xs text-destructive font-medium">
+              ⚠️ Slug &quot;{currentSlug}&quot; is already taken — change the slug or use the AI suggestion
+            </p>
+          )}
         </div>
 
         {/* Excerpt */}
@@ -323,14 +401,83 @@ export function AdminClient() {
 
         <Separator />
 
+        {/* AI Suggestions */}
+        <div className="rounded-lg border border-border bg-muted/30 p-4">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-medium">AI Suggestions</h3>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleAiSuggest}
+              disabled={aiSuggesting || !formContent.trim()}
+            >
+              {aiSuggesting ? "Thinking..." : "✨ Suggest"}
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground mb-3">
+            Uses <code className="text-[11px] bg-muted px-1 rounded">glm-5.1</code> to suggest title, slug, and excerpt based on your content.
+          </p>
+
+          {aiError && (
+            <p className="text-xs text-destructive mb-2">{aiError}</p>
+          )}
+
+          {aiSuggestion && (
+            <div className="space-y-2">
+              {/* Suggested Title */}
+              <div className="flex items-start gap-2">
+                <span className="text-xs text-muted-foreground w-12 pt-0.5 shrink-0">Title</span>
+                <button
+                  type="button"
+                  onClick={() => applySuggestion("title")}
+                  className="flex-1 text-left text-sm rounded-md border border-dashed border-primary/40 bg-primary/5 px-2.5 py-1.5 hover:bg-primary/10 hover:border-primary/60 transition-colors"
+                  title="Click to apply"
+                >
+                  {aiSuggestion.title}
+                </button>
+              </div>
+              {/* Suggested Slug */}
+              <div className="flex items-start gap-2">
+                <span className="text-xs text-muted-foreground w-12 pt-0.5 shrink-0">Slug</span>
+                <button
+                  type="button"
+                  onClick={() => applySuggestion("slug")}
+                  className="flex-1 text-left text-sm rounded-md border border-dashed border-primary/40 bg-primary/5 px-2.5 py-1.5 hover:bg-primary/10 hover:border-primary/60 transition-colors"
+                  title="Click to apply"
+                >
+                  {aiSuggestion.slug}
+                </button>
+              </div>
+              {/* Suggested Excerpt */}
+              <div className="flex items-start gap-2">
+                <span className="text-xs text-muted-foreground w-12 pt-0.5 shrink-0">Excerpt</span>
+                <button
+                  type="button"
+                  onClick={() => applySuggestion("excerpt")}
+                  className="flex-1 text-left text-sm rounded-md border border-dashed border-primary/40 bg-primary/5 px-2.5 py-1.5 hover:bg-primary/10 hover:border-primary/60 transition-colors"
+                  title="Click to apply"
+                >
+                  {aiSuggestion.excerpt}
+                </button>
+              </div>
+              <p className="text-[11px] text-muted-foreground">Click any suggestion to apply it</p>
+            </div>
+          )}
+        </div>
+
+        <Separator />
+
         {/* Actions */}
         <div className="flex items-center gap-3">
-          <Button onClick={handleSave} disabled={saving || !formTitle || !formContent}>
+          <Button onClick={handleSave} disabled={saving || !formTitle || !formContent || !!slugCollision}>
             {saving ? "Saving..." : mode === "create" ? "Create Post" : "Save Changes"}
           </Button>
           <Button variant="ghost" onClick={() => { resetForm(); setMode("list"); }}>
             Cancel
           </Button>
+          {slugCollision && (
+            <span className="text-xs text-destructive">Fix the slug collision before saving</span>
+          )}
         </div>
       </div>
     </div>
