@@ -20,4 +20,7 @@ out/
 
 # OS
 .DS_Store
-Thumbs.db.wrangler/
+Thumbs.db
+
+# Wrangler local state
+.wrangler/
