@@ -26,15 +26,18 @@ import {
   Undo,
   Redo,
 } from "lucide-react";
+import { VoiceInput } from "@/components/voice-input";
 
 const lowlightInstance = createLowlight(common);
 
 interface TiptapEditorProps {
   value: string;
   onChange: (markdown: string) => void;
+  /** Called when dictation produces new transcript text */
+  onDictation?: (fullText: string) => void;
 }
 
-export function TiptapEditor({ value, onChange }: TiptapEditorProps) {
+export function TiptapEditor({ value, onChange, onDictation }: TiptapEditorProps) {
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -228,6 +231,13 @@ export function TiptapEditor({ value, onChange }: TiptapEditorProps) {
         <ToolbarButton onClick={addImage} title="Add Image">
           <ImageIcon className="h-4 w-4" />
         </ToolbarButton>
+
+        <div className="mx-1 h-5 w-px bg-border" />
+
+        {/* Voice dictation */}
+        {onDictation && (
+          <VoiceInput onTranscript={onDictation} />
+        )}
       </div>
 
       {/* Editor */}

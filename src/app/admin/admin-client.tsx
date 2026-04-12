@@ -362,7 +362,11 @@ export function AdminClient() {
         {/* Content */}
         <div>
           <label className="block text-sm font-medium mb-1.5">Content</label>
-          <TiptapEditor value={formContent} onChange={setFormContent} />
+          <TiptapEditor 
+            value={formContent} 
+            onChange={setFormContent} 
+            onDictation={(text) => setFormContent(text)}
+          />
         </div>
 
         {/* Tags */}

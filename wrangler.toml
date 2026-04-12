@@ -22,3 +22,4 @@ migrations_dir = "drizzle"
 #   ADMIN_PASSWORD_HASH  - SHA-256 hash of your admin password
 #   SESSION_SECRET       - Random hex string for signing session cookies
 #   OLLAMA_API_KEY       - Ollama Cloud API key for AI suggestions
+#   ELEVENLABS_API_KEY   - ElevenLabs API key for speech-to-text dictation
