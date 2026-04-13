@@ -1,25 +1,26 @@
 "use client";
 
-import { useState, useCallback, useRef } from "react";
+import { useState, useCallback } from "react";
 import { useScribe, CommitStrategy } from "@elevenlabs/react";
 import { Mic, MicOff, Loader2, AlertCircle } from "lucide-react";
 
 interface VoiceInputProps {
-  onTranscript: (text: string) => void;
+  /** Called with each new committed text segment (not accumulated). */
+  onSegment: (text: string) => void;
 }
 
-export function VoiceInput({ onTranscript }: VoiceInputProps) {
+export function VoiceInput({ onSegment }: VoiceInputProps) {
   const [error, setError] = useState<string | null>(null);
-  const fullTranscriptRef = useRef("");
 
   const scribe = useScribe({
     modelId: "scribe_v2_realtime",
     commitStrategy: CommitStrategy.VAD,
     vadSilenceThresholdSecs: 1.2,
     onCommittedTranscript: (data) => {
-      // Each committed segment appends to the running transcript
-      fullTranscriptRef.current += data.text;
-      onTranscript(fullTranscriptRef.current);
+      // Fire per segment — the editor inserts at cursor
+      if (data.text) {
+        onSegment(data.text);
+      }
     },
     onAuthError: (data) => setError(`Auth: ${data.error}`),
     onQuotaExceededError: () => setError("ElevenLabs quota exceeded"),
@@ -31,9 +32,7 @@ export function VoiceInput({ onTranscript }: VoiceInputProps) {
 
   const startRecording = useCallback(async () => {
     setError(null);
-    fullTranscriptRef.current = "";
 
-    // Get a single-use token from our backend
     try {
       const tokenRes = await fetch("/api/scribe-token", { method: "POST" });
       if (!tokenRes.ok) {
@@ -42,10 +41,8 @@ export function VoiceInput({ onTranscript }: VoiceInputProps) {
         return;
       }
       const tokenData = (await tokenRes.json()) as { token: string };
-      const { token } = tokenData;
-
       await scribe.connect({
-        token,
+        token: tokenData.token,
         microphone: {
           echoCancellation: true,
           noiseSuppression: true,
@@ -55,7 +52,7 @@ export function VoiceInput({ onTranscript }: VoiceInputProps) {
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Failed to start recording");
     }
-  }, [scribe, onTranscript]);
+  }, [scribe, onSegment]);
 
   const stopRecording = useCallback(() => {
     scribe.disconnect();
@@ -84,9 +81,7 @@ export function VoiceInput({ onTranscript }: VoiceInputProps) {
         type="button"
         onClick={toggleRecording}
         disabled={scribe.status === "connecting"}
-        title={
-          isActive ? "Stop dictation" : "Start dictation"
-        }
+        title={isActive ? "Stop dictation" : "Start dictation"}
         className={`relative rounded-md p-1.5 transition-all ${
           isActive
             ? "bg-red-500/20 text-red-500 hover:bg-red-500/30"

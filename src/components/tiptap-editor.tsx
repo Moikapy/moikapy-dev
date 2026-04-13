@@ -27,6 +27,7 @@ import {
   Redo,
 } from "lucide-react";
 
+import { useCallback } from "react";
 import dynamic from "next/dynamic";
 
 const VoiceInput = dynamic(
@@ -39,11 +40,11 @@ const lowlightInstance = createLowlight(common);
 interface TiptapEditorProps {
   value: string;
   onChange: (markdown: string) => void;
-  /** Called when dictation produces new transcript text */
-  onDictation?: (fullText: string) => void;
+  /** Show the voice dictation mic button in the toolbar */
+  enableDictation?: boolean;
 }
 
-export function TiptapEditor({ value, onChange, onDictation }: TiptapEditorProps) {
+export function TiptapEditor({ value, onChange, enableDictation }: TiptapEditorProps) {
   const editor = useEditor({
     extensions: [
       StarterKit.configure({
@@ -84,6 +85,16 @@ export function TiptapEditor({ value, onChange, onDictation }: TiptapEditorProps
     },
     immediatelyRender: false,
   });
+
+  // Insert dictated text at cursor position in the editor
+  const handleDictationSegment = useCallback(
+    (text: string) => {
+      if (!editor) return;
+      // Focus ensures cursor is in the editor, then insert text
+      editor.chain().focus().insertContent(text).run();
+    },
+    [editor]
+  );
 
   if (!editor) return null;
 
@@ -238,11 +249,11 @@ export function TiptapEditor({ value, onChange, onDictation }: TiptapEditorProps
           <ImageIcon className="h-4 w-4" />
         </ToolbarButton>
 
-        <div className="mx-1 h-5 w-px bg-border" />
-
-        {/* Voice dictation */}
-        {onDictation && (
-          <VoiceInput onTranscript={onDictation} />
+        {enableDictation && (
+          <>
+            <div className="mx-1 h-5 w-px bg-border" />
+            <VoiceInput onSegment={handleDictationSegment} />
+          </>
         )}
       </div>
 
