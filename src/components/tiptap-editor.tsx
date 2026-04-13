@@ -26,7 +26,13 @@ import {
   Undo,
   Redo,
 } from "lucide-react";
-import { VoiceInput } from "@/components/voice-input";
+
+import dynamic from "next/dynamic";
+
+const VoiceInput = dynamic(
+  () => import("@/components/voice-input").then((m) => m.VoiceInput),
+  { ssr: false, loading: () => null }
+);
 
 const lowlightInstance = createLowlight(common);
 
