@@ -1,6 +1,6 @@
 # admin-panel
 
-> **Summary**: Blog admin at `/admin` with tab navigation (Posts / Analytics). Posts tab supports creating, editing, and deleting posts with Tiptap rich text editor, AI title/slug/excerpt suggestions via GLM-5.1, and ElevenLabs Scribe v2 voice dictation. Analytics tab shows Cloudflare Analytics dashboard with total views, per-post counts, and top pages with 7/30/90 day range selector. Cookie-based auth with SHA-256 hashed passwords.
+> **Summary**: Blog admin at /admin with tab navigation: Posts tab (CRUD editor with Tiptap, AI suggestions, ElevenLabs voice dictation) and Analytics tab (D1-backed page views, top paths, blog post views, referrer breakdown with 7/30/90 day selector). Cookie-based auth with SHA-256 hashed passwords. See also: [[analytics-api]], [[tiptap-editor]], [[voice-dictation]].
 
 ## Location
 
