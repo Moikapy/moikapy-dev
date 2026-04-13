@@ -148,7 +148,7 @@ export async function GET(request: NextRequest) {
       }));
 
     const hasZoneData = httpGroups.length > 0;
-    console.log("[analytics] zone groups:", httpGroups.length, "blog views:", Object.keys(blogViews).length);
+
 
     return NextResponse.json({
       period: { days, from: dateGeq, to: new Date().toISOString().split("T")[0] },
