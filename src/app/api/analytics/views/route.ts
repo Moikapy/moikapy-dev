@@ -1,55 +1,37 @@
 import { NextRequest, NextResponse } from "next/server";
 import { isAuthenticated } from "@/lib/auth";
 
-function getCloudflareEnv(): {
-  cfApiToken?: string;
-  cfZoneId?: string;
-  cfAccountId?: string;
-} {
+function getEnv(key: string): string | undefined {
   try {
     const { getCloudflareContext } = require("@opennextjs/cloudflare");
     const ctx = getCloudflareContext();
-    return {
-      cfApiToken: ctx.env?.CF_API_TOKEN as string | undefined,
-      cfZoneId: ctx.env?.CF_ZONE_ID as string | undefined,
-      cfAccountId: ctx.env?.CF_ACCOUNT_ID as string | undefined,
-    };
+    return (ctx.env as Record<string, string | undefined>)[key];
   } catch {
-    return {
-      cfApiToken: process.env.CF_API_TOKEN,
-      cfZoneId: process.env.CF_ZONE_ID,
-      cfAccountId: process.env.CF_ACCOUNT_ID,
-    };
+    return process.env[key];
   }
 }
 
 export const dynamic = "force-dynamic";
 
-/**
- * GET /api/analytics/views
- *
- * Returns page view counts from Cloudflare Analytics API.
- * Requires admin auth. Queries the last N days of httpRequests data
- * grouped by URL path, then maps to blog post slugs.
- *
- * Query params:
- *   days - number of days to look back (default: 30, max: 90)
- */
 export async function GET(request: NextRequest) {
   const authed = await isAuthenticated(request);
   if (!authed) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const { cfApiToken, cfZoneId } = getCloudflareEnv();
+  const cfApiToken = getEnv("CF_API_TOKEN");
+  const cfZoneId = getEnv("CF_ZONE_ID");
 
   if (!cfApiToken || !cfZoneId) {
     return NextResponse.json(
       {
         error: "Analytics not configured",
-        hint: "Set CF_API_TOKEN and CF_ZONE_ID secrets. Run: wrangler secret put CF_API_TOKEN && wrangler secret put CF_ZONE_ID",
+        blogViews: {},
+        topPaths: [],
+        totals: { views: 0, requests: 0 },
+        period: { days: 0, from: "", to: "" },
       },
-      { status: 500 }
+      { status: 200 }
     );
   }
 
@@ -58,34 +40,31 @@ export async function GET(request: NextRequest) {
     90
   );
 
-  // Calculate date range
-  const endDate = new Date();
-  const startDate = new Date(endDate);
+  const startDate = new Date();
   startDate.setDate(startDate.getDate() - days);
   const dateFilter = startDate.toISOString().split("T")[0];
 
-  const query = `
-    query($zoneTag: string!, $dateFilter: string!) {
-      viewer {
-        zones(filter: { zoneTag: $zoneTag }) {
-          httpRequests1dGroups(
-            limit: 10000
-            filter: { date_gt: $dateFilter }
-          ) {
-            sum {
-              requests
-              pageViews
-            }
-            dimensions {
-              date
-              clientRequestHTTPHost
-              clientRequestPath
-            }
+  // Try the zone-level httpRequests1dGroups query
+  const query = `{
+    viewer {
+      zones(filter: { zoneTag: "${cfZoneId}" }) {
+        httpRequests1dGroups(
+          limit: 10000
+          filter: { date_gt: "${dateFilter}" }
+        ) {
+          sum {
+            requests
+            pageViews
+          }
+          dimensions {
+            date
+            clientRequestHTTPHost
+            clientRequestPath
           }
         }
       }
     }
-  `;
+  }`;
 
   try {
     const response = await fetch("https://api.cloudflare.com/client/v4/graphql", {
@@ -94,85 +73,82 @@ export async function GET(request: NextRequest) {
         "Content-Type": "application/json",
         Authorization: `Bearer ${cfApiToken}`,
       },
-      body: JSON.stringify({
-        query,
-        variables: {
-          zoneTag: cfZoneId,
-          dateFilter,
-        },
-      }),
+      body: JSON.stringify({ query }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("CF Analytics API error:", response.status, errorText);
-      return NextResponse.json(
-        { error: `Cloudflare Analytics API returned ${response.status}` },
-        { status: 502 }
-      );
+      console.error("CF Analytics API HTTP error:", response.status, errorText.slice(0, 500));
+      // Return empty data rather than 502 — the admin UI handles missing data gracefully
+      return NextResponse.json({
+        error: `Cloudflare API returned ${response.status}`,
+        blogViews: {},
+        topPaths: [],
+        totals: { views: 0, requests: 0 },
+        period: { days, from: dateFilter, to: new Date().toISOString().split("T")[0] },
+      }, { status: 200 });
     }
 
-    const data = await response.json() as {
-      data?: {
-        viewer?: {
-          zones?: Array<{
-            httpRequests1dGroups?: Array<{
-              sum: { requests: number; pageViews: number };
-              dimensions: {
-                date: string;
-                clientRequestHTTPHost: string;
-                clientRequestPath: string;
-              };
-            }>;
-          }>;
-        };
-      };
-      errors?: Array<{ message: string }>;
-    };
+    const json = await response.json();
 
-    if (data.errors?.length) {
-      console.error("CF Analytics GraphQL errors:", data.errors);
-      return NextResponse.json(
-        { error: data.errors[0].message },
-        { status: 502 }
-      );
+    // Check for GraphQL errors
+    const gqlErrors = (json as any)?.errors;
+    if (gqlErrors?.length) {
+      const messages = gqlErrors.map((e: any) => e.message).join("; ");
+      console.error("CF Analytics GraphQL errors:", messages);
+      return NextResponse.json({
+        error: messages,
+        blogViews: {},
+        topPaths: [],
+        totals: { views: 0, requests: 0 },
+        period: { days, from: dateFilter, to: new Date().toISOString().split("T")[0] },
+      }, { status: 200 });
     }
 
-    const groups = data.data?.viewer?.zones?.[0]?.httpRequests1dGroups ?? [];
+    const zones = (json as any)?.data?.viewer?.zones;
+    if (!zones || zones.length === 0) {
+      console.error("CF Analytics: no zones returned for zoneTag:", cfZoneId);
+      return NextResponse.json({
+        error: "No zone found. Check CF_ZONE_ID and CF_API_TOKEN permissions.",
+        blogViews: {},
+        topPaths: [],
+        totals: { views: 0, requests: 0 },
+        period: { days, from: dateFilter, to: new Date().toISOString().split("T")[0] },
+      }, { status: 200 });
+    }
+
+    const groups = zones[0]?.httpRequests1dGroups ?? [];
 
     // Aggregate page views by path
     const viewsByPath: Record<string, number> = {};
     const requestsByPath: Record<string, number> = {};
 
     for (const group of groups) {
-      const path = group.dimensions.clientRequestPath;
-      const pageViews = group.sum.pageViews || 0;
-      const requests = group.sum.requests || 0;
+      const path: string = group.dimensions.clientRequestPath || "/";
+      const pageViews: number = group.sum.pageViews || 0;
+      const requests: number = group.sum.requests || 0;
 
       viewsByPath[path] = (viewsByPath[path] || 0) + pageViews;
       requestsByPath[path] = (requestsByPath[path] || 0) + requests;
     }
 
-    // Extract blog post views - paths like /blog/{slug}
+    // Extract blog post views — paths like /blog/{slug}
     const blogViews: Record<string, { views: number; requests: number }> = {};
     const blogPathRegex = /^\/blog\/([^/]+)\/?$/;
 
     for (const [path, views] of Object.entries(viewsByPath)) {
       const match = path.match(blogPathRegex);
       if (match) {
-        const slug = match[1];
-        blogViews[slug] = {
-          views: views,
+        blogViews[match[1]] = {
+          views,
           requests: requestsByPath[path] || 0,
         };
       }
     }
 
-    // Calculate totals
     const totalViews = Object.values(viewsByPath).reduce((a, b) => a + b, 0);
     const totalRequests = Object.values(requestsByPath).reduce((a, b) => a + b, 0);
 
-    // Top paths overall
     const topPaths = Object.entries(viewsByPath)
       .sort(([, a], [, b]) => b - a)
       .slice(0, 50)
@@ -183,16 +159,19 @@ export async function GET(request: NextRequest) {
       }));
 
     return NextResponse.json({
-      period: { days, from: dateFilter, to: endDate.toISOString().split("T")[0] },
+      period: { days, from: dateFilter, to: new Date().toISOString().split("T")[0] },
       totals: { views: totalViews, requests: totalRequests },
       blogViews,
       topPaths,
     });
   } catch (err) {
-    console.error("Analytics error:", err);
-    return NextResponse.json(
-      { error: "Failed to fetch analytics" },
-      { status: 500 }
-    );
+    console.error("Analytics fetch error:", err);
+    return NextResponse.json({
+      error: "Failed to fetch analytics data",
+      blogViews: {},
+      topPaths: [],
+      totals: { views: 0, requests: 0 },
+      period: { days, from: dateFilter, to: new Date().toISOString().split("T")[0] },
+    }, { status: 200 });
   }
 }

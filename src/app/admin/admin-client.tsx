@@ -108,23 +108,14 @@ export function AdminClient() {
 
   useEffect(() => {
     fetchPosts();
-    // Fetch view counts for post list badges
-    fetch("/api/analytics/views?days=30")
-      .then((res) => (res.ok ? res.json() : null))
-      .then((data: unknown) => {
-        if (data && typeof data === "object" && "blogViews" in data) {
-          setBlogViews((data as { blogViews: BlogViewCounts }).blogViews);
-        }
-      })
-      .catch(() => {/* analytics not critical */});
   }, [fetchPosts]);
 
-  // Fetch analytics when tab switches
+  // Fetch analytics when switching to the analytics tab
   useEffect(() => {
-    if (tab === "analytics" && !analytics) {
+    if (tab === "analytics") {
       fetchAnalytics(analyticsDays);
     }
-  }, [tab, analytics, analyticsDays, fetchAnalytics]);
+  }, [tab, analyticsDays, fetchAnalytics]);
 
   // Set of existing slugs for collision detection
   const existingSlugs = useMemo(() => new Set(posts.map((p) => p.slug)), [posts]);
@@ -293,7 +284,7 @@ export function AdminClient() {
     const blogPosts = posts
       .map((post) => ({
         ...post,
-        views: blogViews[post.slug]?.views ?? analytics?.blogViews[post.slug]?.views ?? 0,
+        views: analytics?.blogViews[post.slug]?.views ?? 0,
       }))
       .sort((a, b) => b.views - a.views);
 
@@ -489,9 +480,7 @@ export function AdminClient() {
                         </div>
                         <p className="text-xs text-muted-foreground mt-0.5 truncate">
                           /{post.slug} · {post.readingTime} · {new Date(post.updatedAt).toLocaleDateString()}
-                          {blogViews[post.slug] && (
-                            <span className="text-muted-foreground/60"> · {blogViews[post.slug].views.toLocaleString()} views</span>
-                          )}
+    
                         </p>
                       </div>
                       <div className="flex items-center gap-2 sm:ml-4">
