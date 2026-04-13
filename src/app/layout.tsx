@@ -73,7 +73,7 @@ export default function RootLayout({
         />
         <script
           dangerouslySetInnerHTML={{
-            __html: `if(typeof fetch!=="undefined"){fetch("/api/analytics/track",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({path:location.pathname}),keepalive:true}).catch(function(){})}`,
+            __html: `if(typeof fetch!=="undefined"){fetch("/api/analytics/track",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({path:location.pathname,ref:document.referrer}),keepalive:true}).catch(function(){})}`,
           }}
         />
       </body>

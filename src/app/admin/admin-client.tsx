@@ -35,6 +35,7 @@ interface AnalyticsData {
   totals: { views: number; requests: number };
   blogViews: BlogViewCounts;
   topPaths: { path: string; views: number; requests: number }[];
+  topReferrers: { referer: string; views: number }[];
   debug?: string;
 }
 
@@ -421,6 +422,40 @@ export function AdminClient() {
                         <td className="px-4 py-2.5 font-mono text-xs truncate max-w-[400px]">{item.path}</td>
                         <td className="px-4 py-2.5 text-right tabular-nums">{formatNumber(item.views)}</td>
                         <td className="px-4 py-2.5 text-right tabular-nums text-muted-foreground">{formatNumber(item.requests)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </>
+        )}
+
+        {/* Top Referrers */}
+        {analytics && analytics.topReferrers && analytics.topReferrers.length > 0 && (
+          <>
+            <Separator />
+            <div>
+              <h3 className="text-lg font-semibold mb-3">Where Views Come From</h3>
+              <div className="rounded-lg border border-border overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-border bg-muted/30">
+                      <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Source</th>
+                      <th className="px-4 py-2.5 text-right font-medium text-muted-foreground">Views</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border">
+                    {analytics.topReferrers.map((item) => (
+                      <tr key={item.referer} className="hover:bg-muted/30 transition-colors">
+                        <td className="px-4 py-2.5">
+                          {item.referer === "direct" ? (
+                            <span className="text-muted-foreground">Direct / Bookmark</span>
+                          ) : (
+                            <span className="font-medium">{item.referer}</span>
+                          )}
+                        </td>
+                        <td className="px-4 py-2.5 text-right tabular-nums">{item.views.toLocaleString()}</td>
                       </tr>
                     ))}
                   </tbody>

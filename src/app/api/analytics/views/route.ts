@@ -38,31 +38,39 @@ export async function GET(request: NextRequest) {
         totals: { views: 0, requests: 0 },
         blogViews: {},
         topPaths: [],
+        topReferrers: [],
         debug: "D1 database not available",
       });
     }
 
     // Total views in the period
-    const totalResult = await db!
+    const totalResult = await db
       .prepare(
-        `SELECT COALESCE(SUM(views), 0) as total_views, COALESCE(SUM(views), 0) as total_requests
-         FROM page_views WHERE date >= ?`
+        `SELECT COALESCE(SUM(views), 0) as total_views FROM page_views WHERE date >= ?`
       )
       .bind(dateGeq)
       .first();
 
-    // Per-path totals in the period (top 50 by views)
-    const pathRows = await db!
+    // Per-path totals (top 50 by views)
+    const pathRows = await db
       .prepare(
         `SELECT path, SUM(views) as views FROM page_views WHERE date >= ? GROUP BY path ORDER BY views DESC LIMIT 50`
       )
       .bind(dateGeq)
       .all();
 
-    // Per-blog-slug totals in the period
-    const blogRows = await db!
+    // Per-blog-slug totals
+    const blogRows = await db
       .prepare(
         `SELECT path, SUM(views) as views FROM page_views WHERE date >= ? AND path LIKE '/blog/%' GROUP BY path ORDER BY views DESC`
+      )
+      .bind(dateGeq)
+      .all();
+
+    // Top referrers
+    const refRows = await db
+      .prepare(
+        `SELECT referer, SUM(views) as views FROM page_referrers WHERE date >= ? GROUP BY referer ORDER BY views DESC LIMIT 20`
       )
       .bind(dateGeq)
       .all();
@@ -72,7 +80,12 @@ export async function GET(request: NextRequest) {
     const topPaths = (pathRows.results as { path: string; views: number }[]).map((r) => ({
       path: r.path,
       views: r.views,
-      requests: r.views, // Same as views for D1-tracked data
+      requests: r.views,
+    }));
+
+    const topReferrers = (refRows.results as { referer: string; views: number }[]).map((r) => ({
+      referer: r.referer,
+      views: r.views,
     }));
 
     const blogViews: Record<string, { views: number; requests: number }> = {};
@@ -84,7 +97,7 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Also try CF Analytics for aggregate totals (supplements D1 data)
+    // Try CF Analytics for aggregate totals (supplement D1)
     let cfTotalViews: number | null = null;
     const cfApiToken = getEnv("CF_API_TOKEN");
     const cfZoneId = getEnv("CF_ZONE_ID");
@@ -98,10 +111,7 @@ export async function GET(request: NextRequest) {
                 limit: 10000
                 filter: { date_geq: ${JSON.stringify(dateGeq)} }
               ) {
-                sum {
-                  requests
-                  pageViews
-                }
+                sum { pageViews }
                 dimensions { date }
               }
             }
@@ -127,7 +137,7 @@ export async function GET(request: NextRequest) {
           );
         }
       } catch {
-        // CF API not critical, skip
+        // CF API not critical
       }
     }
 
@@ -140,6 +150,7 @@ export async function GET(request: NextRequest) {
       d1Views: totalViews,
       blogViews,
       topPaths,
+      topReferrers,
     });
   } catch (err) {
     console.error("[analytics/views] Error:", err);
@@ -148,6 +159,7 @@ export async function GET(request: NextRequest) {
       totals: { views: 0, requests: 0 },
       blogViews: {},
       topPaths: [],
+      topReferrers: [],
       debug: `Error: ${err instanceof Error ? err.message : String(err)}`,
     });
   }

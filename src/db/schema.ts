@@ -27,6 +27,13 @@ export const pageViews = sqliteTable("page_views", {
   views: integer("views").notNull().default(0),
 });
 
+export const pageReferrers = sqliteTable("page_referrers", {
+  referer: text("referer").notNull(),
+  path: text("path").notNull(),
+  date: text("date").notNull(),
+  views: integer("views").notNull().default(0),
+});
+
 export type Post = typeof posts.$inferSelect;
 export type NewPost = typeof posts.$inferInsert;
 export type Reaction = typeof reactions.$inferSelect;

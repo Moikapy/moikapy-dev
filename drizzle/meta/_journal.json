@@ -29,6 +29,13 @@
       "when": 1700000300000,
       "tag": "0003_add_page_views",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": 6,
+      "when": 1700000400000,
+      "tag": "0004_add_page_referrers",
+      "breakpoints": true
     }
   ]
 }
