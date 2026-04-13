@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import Link from "next/link";
 import { siteConfig, socialLabels, type SocialKey } from "@/lib/config";
@@ -15,7 +15,7 @@ import {
   RumbleIcon,
 } from "@/components/icons";
 import { siteConfig as config } from "@/lib/config";
-import { Menu, X } from "lucide-react";
+import { Menu, X, ChevronDown } from "lucide-react";
 import Image from "next/image";
 
 const iconMap: Record<SocialKey, React.ComponentType<React.SVGProps<SVGSVGElement>>> = {
@@ -40,10 +40,31 @@ const socialNames: Record<SocialKey, string> = {
   rumble: "Rumble",
 };
 
+const navPages = [
+  { href: "/blog", label: "Blog" },
+  { href: "/kapy", label: "Kapy" },
+  { href: "/token", label: "$KAPY" },
+  { href: "/traces", label: "Traces" },
+] as const;
+
 export function Header() {
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
-  // Lock body scroll when menu is open
+  // Close desktop menu on outside click
+  useEffect(() => {
+    if (!menuOpen) return;
+    const handler = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [menuOpen]);
+
+  // Lock body scroll when mobile menu is open
   useEffect(() => {
     if (mobileOpen) {
       document.body.style.overflow = "hidden";
@@ -75,49 +96,71 @@ export function Header() {
           </div>
         </Link>
 
-        {/* Desktop nav */}
-        <nav className="hidden md:flex items-center gap-1">
+        {/* Desktop: Blog link + hamburger dropdown */}
+        <div className="hidden md:flex items-center gap-1">
           <Link
             href="/blog"
             className="rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
           >
             Blog
           </Link>
-          <Link
-            href="/kapy"
-            className="rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
-          >
-            Kapy
-          </Link>
-          <Link
-            href="/token"
-            className="rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
-          >
-            $KAPY
-          </Link>
-          <Link
-            href="/traces"
-            className="rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
-          >
-            Traces
-          </Link>
-          {(Object.keys(config.socials) as SocialKey[]).map((key) => {
-            const Icon = iconMap[key];
-            const label = socialLabels[key];
-            return (
-              <a
-                key={key}
-                href={config.socials[key]}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={label}
-                className="rounded-md p-2 text-muted-foreground transition-colors hover:text-foreground"
-              >
-                <Icon className="h-4 w-4" />
-              </a>
-            );
-          })}
-        </nav>
+
+          {/* Hamburger dropdown trigger */}
+          <div ref={menuRef} className="relative">
+            <button
+              type="button"
+              onClick={() => setMenuOpen(!menuOpen)}
+              className="flex items-center gap-1 rounded-md px-2 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground hover:bg-accent"
+              aria-label="More pages and socials"
+              aria-expanded={menuOpen}
+            >
+              <Menu className="h-4 w-4" />
+              <ChevronDown className={`h-3 w-3 transition-transform ${menuOpen ? "rotate-180" : ""}`} />
+            </button>
+
+            {/* Dropdown */}
+            {menuOpen && (
+              <div className="absolute right-0 top-full mt-1 w-56 rounded-lg border border-border bg-background shadow-lg overflow-hidden z-50">
+                {/* Pages */}
+                <div className="py-1.5">
+                  {navPages.filter((p) => p.href !== "/blog").map((page) => (
+                    <Link
+                      key={page.href}
+                      href={page.href}
+                      onClick={() => setMenuOpen(false)}
+                      className="flex items-center rounded-md mx-1.5 px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground hover:bg-accent"
+                    >
+                      {page.label}
+                    </Link>
+                  ))}
+                </div>
+
+                {/* Divider */}
+                <div className="border-t border-border" />
+
+                {/* Socials */}
+                <div className="py-1.5">
+                  {(Object.keys(config.socials) as SocialKey[]).map((key) => {
+                    const Icon = iconMap[key];
+                    return (
+                      <a
+                        key={key}
+                        href={config.socials[key]}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        onClick={() => setMenuOpen(false)}
+                        className="flex items-center gap-2.5 rounded-md mx-1.5 px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground hover:bg-accent"
+                      >
+                        <Icon className="h-4 w-4" />
+                        {socialNames[key]}
+                      </a>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
 
         {/* Mobile hamburger */}
         <button
@@ -164,34 +207,16 @@ export function Header() {
                 >
                   Home
                 </Link>
-                <Link
-                  href="/blog"
-                  className="rounded-md px-3 py-2.5 text-base font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-accent"
-                  onClick={() => setMobileOpen(false)}
-                >
-                  Blog
-                </Link>
-                <Link
-                  href="/kapy"
-                  className="rounded-md px-3 py-2.5 text-base font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-accent"
-                  onClick={() => setMobileOpen(false)}
-                >
-                  Kapy
-                </Link>
-                <Link
-                  href="/token"
-                  className="rounded-md px-3 py-2.5 text-base font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-accent"
-                  onClick={() => setMobileOpen(false)}
-                >
-                  $KAPY
-                </Link>
-                <Link
-                  href="/traces"
-                  className="rounded-md px-3 py-2.5 text-base font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-accent"
-                  onClick={() => setMobileOpen(false)}
-                >
-                  Traces
-                </Link>
+                {navPages.map((page) => (
+                  <Link
+                    key={page.href}
+                    href={page.href}
+                    className="rounded-md px-3 py-2.5 text-base font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-accent"
+                    onClick={() => setMobileOpen(false)}
+                  >
+                    {page.label}
+                  </Link>
+                ))}
               </nav>
 
               <div className="mt-6 pt-6 border-t border-border">
