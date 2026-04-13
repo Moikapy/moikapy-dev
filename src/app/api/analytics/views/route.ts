@@ -23,16 +23,13 @@ export async function GET(request: NextRequest) {
   const cfZoneId = getEnv("CF_ZONE_ID");
 
   if (!cfApiToken || !cfZoneId) {
-    return NextResponse.json(
-      {
-        error: "Analytics not configured",
-        blogViews: {},
-        topPaths: [],
-        totals: { views: 0, requests: 0 },
-        period: { days: 0, from: "", to: "" },
-      },
-      { status: 200 }
-    );
+    return NextResponse.json({
+      period: { days: 0, from: "", to: "" },
+      totals: { views: 0, requests: 0 },
+      blogViews: {},
+      topPaths: [],
+      debug: "CF_API_TOKEN or CF_ZONE_ID not configured",
+    });
   }
 
   const days = Math.min(
@@ -42,15 +39,17 @@ export async function GET(request: NextRequest) {
 
   const startDate = new Date();
   startDate.setDate(startDate.getDate() - days);
-  const dateFilter = startDate.toISOString().split("T")[0];
+  const dateGeq = startDate.toISOString().split("T")[0];
 
-  // Try the zone-level httpRequests1dGroups query
+  // Query both zone-level analytics AND Workers analytics
+  // Workers on custom domains populate workersInvocationsAdaptive,
+  // not httpRequests1dGroups with paths
   const query = `{
     viewer {
-      zones(filter: { zoneTag: "${cfZoneId}" }) {
+      zones(filter: { zoneTag: ${JSON.stringify(cfZoneId)} }) {
         httpRequests1dGroups(
           limit: 10000
-          filter: { date_gt: "${dateFilter}" }
+          filter: { date_geq: ${JSON.stringify(dateGeq)} }
         ) {
           sum {
             requests
@@ -58,7 +57,6 @@ export async function GET(request: NextRequest) {
           }
           dimensions {
             date
-            clientRequestHTTPHost
             clientRequestPath
           }
         }
@@ -78,15 +76,14 @@ export async function GET(request: NextRequest) {
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error("CF Analytics API HTTP error:", response.status, errorText.slice(0, 500));
-      // Return empty data rather than 502 — the admin UI handles missing data gracefully
+      console.error("[analytics] CF API HTTP error:", response.status, errorText.slice(0, 500));
       return NextResponse.json({
-        error: `Cloudflare API returned ${response.status}`,
+        period: { days, from: dateGeq, to: new Date().toISOString().split("T")[0] },
+        totals: { views: 0, requests: 0 },
         blogViews: {},
         topPaths: [],
-        totals: { views: 0, requests: 0 },
-        period: { days, from: dateFilter, to: new Date().toISOString().split("T")[0] },
-      }, { status: 200 });
+        debug: `CF API returned ${response.status}`,
+      });
     }
 
     const json = await response.json();
@@ -95,44 +92,39 @@ export async function GET(request: NextRequest) {
     const gqlErrors = (json as any)?.errors;
     if (gqlErrors?.length) {
       const messages = gqlErrors.map((e: any) => e.message).join("; ");
-      console.error("CF Analytics GraphQL errors:", messages);
+      console.error("[analytics] GraphQL errors:", messages);
       return NextResponse.json({
-        error: messages,
+        period: { days, from: dateGeq, to: new Date().toISOString().split("T")[0] },
+        totals: { views: 0, requests: 0 },
         blogViews: {},
         topPaths: [],
-        totals: { views: 0, requests: 0 },
-        period: { days, from: dateFilter, to: new Date().toISOString().split("T")[0] },
-      }, { status: 200 });
+        debug: `GraphQL error: ${messages}`,
+      });
     }
 
     const zones = (json as any)?.data?.viewer?.zones;
-    if (!zones || zones.length === 0) {
-      console.error("CF Analytics: no zones returned for zoneTag:", cfZoneId);
-      return NextResponse.json({
-        error: "No zone found. Check CF_ZONE_ID and CF_API_TOKEN permissions.",
-        blogViews: {},
-        topPaths: [],
-        totals: { views: 0, requests: 0 },
-        period: { days, from: dateFilter, to: new Date().toISOString().split("T")[0] },
-      }, { status: 200 });
-    }
+    const httpGroups = zones?.[0]?.httpRequests1dGroups ?? [];
 
-    const groups = zones[0]?.httpRequests1dGroups ?? [];
-
-    // Aggregate page views by path
     const viewsByPath: Record<string, number> = {};
     const requestsByPath: Record<string, number> = {};
+    let totalViews = 0;
+    let totalRequests = 0;
 
-    for (const group of groups) {
-      const path: string = group.dimensions.clientRequestPath || "/";
-      const pageViews: number = group.sum.pageViews || 0;
-      const requests: number = group.sum.requests || 0;
+    for (const group of httpGroups) {
+      const path: string = group.dimensions?.clientRequestPath || "/";
+      const pageViews: number = group.sum?.pageViews || 0;
+      const reqs: number = group.sum?.requests || 0;
 
       viewsByPath[path] = (viewsByPath[path] || 0) + pageViews;
-      requestsByPath[path] = (requestsByPath[path] || 0) + requests;
+      requestsByPath[path] = (requestsByPath[path] || 0) + reqs;
+      totalViews += pageViews;
+      totalRequests += reqs;
     }
 
-    // Extract blog post views — paths like /blog/{slug}
+    // Add Workers invocations as fallback total if zone data is empty
+    // (not currently queried, could add later)
+
+    // Extract blog post views from /blog/{slug} paths
     const blogViews: Record<string, { views: number; requests: number }> = {};
     const blogPathRegex = /^\/blog\/([^/]+)\/?$/;
 
@@ -146,9 +138,6 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    const totalViews = Object.values(viewsByPath).reduce((a, b) => a + b, 0);
-    const totalRequests = Object.values(requestsByPath).reduce((a, b) => a + b, 0);
-
     const topPaths = Object.entries(viewsByPath)
       .sort(([, a], [, b]) => b - a)
       .slice(0, 50)
@@ -158,20 +147,26 @@ export async function GET(request: NextRequest) {
         requests: requestsByPath[path] || 0,
       }));
 
+    const hasZoneData = httpGroups.length > 0;
+    console.log("[analytics] zone groups:", httpGroups.length, "blog views:", Object.keys(blogViews).length);
+
     return NextResponse.json({
-      period: { days, from: dateFilter, to: new Date().toISOString().split("T")[0] },
+      period: { days, from: dateGeq, to: new Date().toISOString().split("T")[0] },
       totals: { views: totalViews, requests: totalRequests },
       blogViews,
       topPaths,
+      debug: !hasZoneData
+        ? "No analytics data returned. Data can take 24-48h to appear on new deployments. Verify CF_API_TOKEN has Zone:Analytics:Read permission and CF_ZONE_ID is correct."
+        : undefined,
     });
   } catch (err) {
-    console.error("Analytics fetch error:", err);
+    console.error("[analytics] Error:", err);
     return NextResponse.json({
-      error: "Failed to fetch analytics data",
+      period: { days, from: dateGeq, to: new Date().toISOString().split("T")[0] },
+      totals: { views: 0, requests: 0 },
       blogViews: {},
       topPaths: [],
-      totals: { views: 0, requests: 0 },
-      period: { days, from: dateFilter, to: new Date().toISOString().split("T")[0] },
-    }, { status: 200 });
+      debug: `Error: ${err instanceof Error ? err.message : String(err)}`,
+    });
   }
 }

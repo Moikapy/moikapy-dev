@@ -35,6 +35,7 @@ interface AnalyticsData {
   totals: { views: number; requests: number };
   blogViews: BlogViewCounts;
   topPaths: { path: string; views: number; requests: number }[];
+  debug?: string;
 }
 
 type EditorMode = "list" | "edit" | "create";
@@ -318,6 +319,13 @@ export function AdminClient() {
             <span className="text-xs text-muted-foreground">Loading…</span>
           )}
         </div>
+
+        {/* Debug: show API response info */}
+        {analytics?.debug && (
+          <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-3 text-sm text-yellow-600 dark:text-yellow-400">
+            {analytics.debug}
+          </div>
+        )}
 
         {/* Summary cards */}
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
