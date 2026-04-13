@@ -27,3 +27,10 @@ Thumbs.db
 .codebase-wiki/meta/wiki.db
 
 .codebase-wiki/queries/
+
+# Never let wiki ingest env or secret files
+.env*
+!.env.example
+.nsec
+*.pem
+*.key
