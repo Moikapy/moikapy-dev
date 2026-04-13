@@ -26,6 +26,10 @@ interface AISuggestion {
   excerpt: string;
 }
 
+interface BlogViewCounts {
+  [slug: string]: { views: number; requests: number };
+}
+
 type EditorMode = "list" | "edit" | "create";
 
 function slugify(text: string): string {
@@ -52,6 +56,9 @@ export function AdminClient() {
   const [aiSuggestion, setAiSuggestion] = useState<AISuggestion | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
 
+  // Analytics state
+  const [blogViews, setBlogViews] = useState<BlogViewCounts>({});
+
   const fetchPosts = useCallback(async () => {
     try {
       const res = await fetch("/api/posts?all=1");
@@ -68,6 +75,15 @@ export function AdminClient() {
 
   useEffect(() => {
     fetchPosts();
+    // Fetch view counts
+    fetch("/api/analytics/views?days=30")
+      .then((res) => (res.ok ? res.json() : null))
+      .then((data: unknown) => {
+        if (data && typeof data === 'object' && 'blogViews' in data) {
+          setBlogViews((data as { blogViews: BlogViewCounts }).blogViews);
+        }
+      })
+      .catch(() => {/* analytics not critical */});
   }, [fetchPosts]);
 
   // Set of existing slugs for collision detection
@@ -260,6 +276,9 @@ export function AdminClient() {
                     </div>
                     <p className="text-xs text-muted-foreground mt-0.5 truncate">
                       /{post.slug} · {post.readingTime} · {new Date(post.updatedAt).toLocaleDateString()}
+                      {blogViews[post.slug] && (
+                        <span className="text-muted-foreground/60"> · {blogViews[post.slug].views.toLocaleString()} views</span>
+                      )}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 sm:ml-4">
