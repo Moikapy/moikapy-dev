@@ -1,36 +1,34 @@
-# moikapy-dev — Codebase Wiki Index
+# Codebase Wiki Index
 
-> Auto-maintained knowledge base for the **moikapy-dev** codebase.
-> Use `wiki_query` to search, or browse pages below.
+> Auto-maintained knowledge base. Use `/wiki-query <question>` to search.
 
 ## Entities
-
-- [[admin-panel]] — Blog admin panel at /admin with Tiptap editor, AI suggestions, and voice dictation
-- [[voice-dictation]] — ElevenLabs Scribe v2 real-time speech-to-text dictation in the blog editor
-- [[tiptap-editor]] — Rich text editor component with Markdown serialization and voice dictation
-- [[blog-api]] — REST API for blog posts (CRUD, D1 storage, Drizzle ORM)
-- [[x402-monetization]] — HTTP 402 payment protocol for API access (USDC on Base)
-- [[cloudflare-deployment]] — Cloudflare Workers + D1 deployment via OpenNext
+- [[root]] — _root module, with 20 source files.
+- [[admin-panel]] — admin-panel module, with 5 source files, exports 9 symbols.
+- [[blog-api]] — blog-api module, with 3 source files, exports: PostWithReadingTime, dynamic, getDb, isLocalDev, parsePostTags.
+- [[cloudflare-deployment]] — cloudflare-deployment module, with 3 source files.
+- [[docs]] — docs module.
+- [[drizzle]] — drizzle module.
+- [[public]] — public module, with 1 source file.
+- [[scripts]] — scripts module, with 3 source files.
+- [[src-app]] — src/app module, with 20 source files, exports 12 symbols.
+- [[src-components]] — src/components module, with 20 source files, entry point at `src/components/icons/index.ts`, exports 20 symbols.
+- [[src-db]] — src/db module, with 3 source files, entry point at `src/db/index.ts`, exports 8 symbols.
+- [[src-env-d-ts]] — src/env.d.ts module, with 1 source file.
+- [[src-lib]] — src/lib module, with 9 source files, exports 20 symbols.
+- [[src-middleware-ts]] — src/middleware.ts module, with 1 source file, exports: config.
+- [[tiptap-editor]] — tiptap-editor module, with 1 source file, exports: TiptapEditor.
+- [[voice-dictation]] — voice-dictation module, with 2 source files, exports: VoiceInput, dynamic.
+- [[x402-monetization]] — x402-monetization module, with 1 source file, exports: dynamic.
 
 ## Concepts
 
-<!-- Cross-cutting patterns and paradigms -->
-
 ## Decisions (ADRs)
-
-- [[001-cloudflare-workers-d1]] — Cloudflare Workers + D1 over Vercel + Postgres
-- [[002-elevenlabs-scribe-voice-dictation]] — ElevenLabs Scribe v2 Real-Time for Voice Dictation
-- [[003-tiptap-markdown-editor]] — Tiptap with Markdown Serialization for Blog Editing
-- [[004-x402-payment-protocol]] — x402 Payment Protocol for API Monetization
 
 ## Evolution
 
-<!-- How features changed over time -->
-
 ## Comparisons
-
-<!-- Side-by-side analysis -->
 
 ---
 
-*Last updated: 2026-04-13 • 10 pages total*
+*Last updated: 2026-04-13 • 19 pages total*
