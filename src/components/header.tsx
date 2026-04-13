@@ -84,6 +84,18 @@ export function Header() {
             Blog
           </Link>
           <Link
+            href="/kapy"
+            className="rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          >
+            Kapy
+          </Link>
+          <Link
+            href="/token"
+            className="rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
+          >
+            $KAPY
+          </Link>
+          <Link
             href="/traces"
             className="rounded-md px-3 py-2 text-sm text-muted-foreground transition-colors hover:text-foreground"
           >
@@ -158,6 +170,20 @@ export function Header() {
                   onClick={() => setMobileOpen(false)}
                 >
                   Blog
+                </Link>
+                <Link
+                  href="/kapy"
+                  className="rounded-md px-3 py-2.5 text-base font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-accent"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  Kapy
+                </Link>
+                <Link
+                  href="/token"
+                  className="rounded-md px-3 py-2.5 text-base font-medium text-muted-foreground transition-colors hover:text-foreground hover:bg-accent"
+                  onClick={() => setMobileOpen(false)}
+                >
+                  $KAPY
                 </Link>
                 <Link
                   href="/traces"
