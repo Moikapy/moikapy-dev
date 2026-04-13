@@ -25,3 +25,5 @@ Thumbs.db
 # Wrangler local state
 .wrangler/
 .codebase-wiki/meta/wiki.db
+
+.codebase-wiki/queries/
