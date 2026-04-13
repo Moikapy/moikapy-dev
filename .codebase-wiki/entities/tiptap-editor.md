@@ -1,35 +1,27 @@
 # tiptap-editor
 
-> **Summary**: Rich text editor component (`TiptapEditor`) built on Tiptap (ProseMirror) with Markdown serialization via `tiptap-markdown`. Provides a full toolbar (undo/redo, formatting, headings, lists, code blocks, blockquote, links, images) and an optional voice dictation mic button. Content flows as Markdown — `onUpdate` extracts via `editor.storage.markdown.getMarkdown()` and calls `onChange()`. Dictation inserts text at cursor using `editor.chain().focus().insertContent()`.
+> Rich text editor component built on Tiptap (ProseMirror) with Markdown serialization via `tiptap-markdown`. Toolbar provides undo/redo, formatting, headings, lists, code blocks, blockquote, links, images, and optional voice dictation mic button. Content flows as Markdown — dictation inserts at cursor via `editor.commands.insertContent()`.
 
-## Location
-- **File**: `src/components/tiptap-editor.tsx`
+## Source File
+- `src/components/tiptap-editor.tsx`
 
 ## Extensions
-- **StarterKit** — Bold, italic, strike, headings (1-3), bullet/ordered lists, code blocks (disabled in favor of CodeBlockLowlight)
-- **Link** — Clickable links with `openOnClick: false`
-- **Image** — Inline images with rounded styling
-- **Placeholder** — "Start writing your post..." when empty
-- **CodeBlockLowlight** — Syntax-highlighted code blocks using lowlight (common languages)
-- **HorizontalRule** — Thematic breaks
-- **Markdown** — Bidirectional Markdown serialization (`html: true`, `transformPastedText: true`, `transformCopiedText: true`)
+- StarterKit (bold, italic, strike, headings 1-3, bullet/ordered lists)
+- Link (`openOnClick: false`)
+- Image (rounded styling)
+- Placeholder ("Start writing your post...")
+- CodeBlockLowlight (syntax-highlighted via lowlight/common)
+- HorizontalRule
+- Markdown (bidirectional serialization)
 
 ## Props
-- `value: string` — Initial Markdown content (only used on mount)
-- `onChange: (markdown: string) => void` — Called on every update with extracted Markdown
+- `value: string` — Initial Markdown content (mount-only, not reactive)
+- `onChange: (markdown: string) => void` — Fires on every update with extracted Markdown
 - `enableDictation?: boolean` — Shows VoiceInput mic button in toolbar
 
-## Design Decisions
-- See [[003-tiptap-markdown-editor]] — ADR for choosing Tiptap + Markdown
-- **No controlled content**: `value` prop sets `content` on init only. External state changes (like dictation) must use `editor.commands` directly, not re-render via props.
-- **Dynamic import for VoiceInput**: Loaded via `next/dynamic({ ssr: false })` because `@elevenlabs/client` uses browser-only APIs.
+## Design Note
+`value` prop sets `content` on init only — external state changes must use `editor.commands` directly (e.g. `insertContent` for dictation), not re-render via props.
 
-## See Also
-- [[voice-dictation]] — Voice dictation component used in toolbar
-- [[admin-panel]] — Where TiptapEditor is rendered
-
-## Evolution
-- **2026-04-13** — Initial implementation
-
----
-*Last updated: 2026-04-13*
+## Cross-References
+- [[voice-dictation]] — VoiceInput component used in toolbar
+- [[admin-panel]] — Where TiptapEditor renders
