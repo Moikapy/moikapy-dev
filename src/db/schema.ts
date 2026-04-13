@@ -21,6 +21,12 @@ export const reactions = sqliteTable("reactions", {
   createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
 });
 
+export const pageViews = sqliteTable("page_views", {
+  path: text("path").notNull(),
+  date: text("date").notNull(),
+  views: integer("views").notNull().default(0),
+});
+
 export type Post = typeof posts.$inferSelect;
 export type NewPost = typeof posts.$inferInsert;
 export type Reaction = typeof reactions.$inferSelect;

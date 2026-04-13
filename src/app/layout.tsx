@@ -66,7 +66,16 @@ export default function RootLayout({
           <Footer />
         </div>
         <ServiceWorkerRegistrar />
-        <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "d70b9eb899084d61a551c912de89c59b"}' />
+        <script
+          defer
+          src="https://static.cloudflareinsights.com/beacon.min.js"
+          data-cf-beacon='{"token": "d70b9eb899084d61a551c912de89c59b"}'
+        />
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `if(typeof fetch!=="undefined"){fetch("/api/analytics/track",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({path:location.pathname}),keepalive:true}).catch(function(){})}`,
+          }}
+        />
       </body>
     </html>
   );
