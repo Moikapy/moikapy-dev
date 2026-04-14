@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: "glm-4",
+        model: "kimi-k2.5",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: content },
@@ -66,9 +66,9 @@ export async function POST(request: NextRequest) {
     clearTimeout(timeout);
 
     if (!response.ok) {
-      // If glm-4 doesn't exist, try glm-5.1 as fallback
+      // If kimi-k2.5 doesn't exist, try glm-5.1 as fallback
       if (response.status === 404 || response.status === 400) {
-        console.log("[ai/format] glm-4 not available, falling back to glm-5.1");
+        console.log("[ai/format] kimi-k2.5 not available, falling back to glm-5.1");
         clearTimeout(undefined);
 
         const fallbackController = new AbortController();
