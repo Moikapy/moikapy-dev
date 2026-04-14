@@ -10,6 +10,7 @@
 - [[cloudflare-deployment]] — Deploys as a Cloudflare Worker via OpenNext with D1 (SQLite) for storage. Secrets managed through wrangler secret: ADMIN_PASSWORD_HASH, SESSION_SECRET, OLLAMA_API_KEY, ELEVENLABS_API_KEY, CF_API_TOKEN, CF_ZONE_ID. Static assets via Workers Sites. D1 tables: posts, reactions, page_views (analytics), page_referrers (referrer tracking). See [[analytics-api]] for analytics secrets, [[src-db]] for schema.
 - [[docs]] — docs module in the codebase
 - [[drizzle]] — drizzle module in the codebase
+- [[format-route]] — AI format endpoint at /api/ai/format that reformats voice-dictated text into clean Markdown. Uses GLM-5.1:cloud with think:false (eliminates chain-of-thought overhead), num_predict:8192, and continuation loop (up to 4 rounds) that detects truncated output via looksTruncated() heuristic and sends "continue" messages. Single-request approach (no chunking) for up to 8000 chars. System prompt explicitly requires preserving ALL sentences to prevent summarization.
 - [[public]] — public module in the codebase
 - [[scripts]] — scripts module in the codebase
 - [[src-db]] — Database layer using Drizzle ORM with D1 (SQLite). Schema includes: posts (slug, title, content, tags as JSON, published flag), reactions (emoji reactions per post by visitor hash), page_views (path+date composite key, view counts), page_referrers (referer domain+path+date, view counts). Migrations in drizzle/ directory. See [[analytics-api]] for how page_views and page_referrers are used.
@@ -24,6 +25,8 @@
 
 ## Concepts
 - [[analytics-tracking]] — D1-based page view and referrer tracking system. Client-side script in layout.tsx fires POST /api/analytics/track with path and referrer on each page load. Data stored in page_views (path, date, views) and page_referrers (referer, path, date, views) tables. Referrers normalized to domain (strips www prefix and paths; "direct" for no referrer). Admin analytics dashboard reads from D1 for per-path data, supplemented by CF GraphQL API for aggregate zone totals. See [[analytics-api]] and [[admin-panel]].
+- [[format-agent-harness]] — Agent-harness pattern for the AI format endpoint. Uses a continuation loop to detect truncated LLM output and send "continue" messages, plus context passing between chunks for consistent formatting style. Replaces the previous single-shot approach that truncated after a few sentences.
+- [[format-truncation-fix]] — Fix for the AI format tool truncating/stopping early when formatting voice-dictated text. Three root causes: thinking tokens eating the budget, chunking causing summarization, and Tiptap not syncing value prop changes.
 
 ## Decisions (ADRs)
 - [[adr-001-use-cf-graphql-analytics-api-for-page-view-tracking]] — Query the Cloudflare GraphQL Analytics API (httpRequests1dGroups) from the server for zone-level page view data. Uses clientRequestPath dimension to break down views per URL. Falls back to empty data 
@@ -35,4 +38,4 @@
 
 ---
 
-*Last updated: 2026-04-13 • 23 pages total*
+*Last updated: 2026-04-14 • 27 pages total*

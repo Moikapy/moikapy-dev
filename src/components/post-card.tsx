@@ -1,5 +1,3 @@
-"use client";
-
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -20,9 +18,9 @@ interface PostCardProps {
 
 export function PostCard({ post }: PostCardProps) {
   return (
-    <Link href={`/blog/${post.slug}`}>
-      <Card className="group transition-all hover:border-primary/50 hover:shadow-md overflow-hidden">
-        {post.coverImage && (
+    <Card className="group transition-all hover:border-primary/50 hover:shadow-md overflow-hidden">
+      {post.coverImage && (
+        <Link href={`/blog/${post.slug}`} className="block">
           <div className="aspect-[2/1] overflow-hidden">
             <img
               src={post.coverImage}
@@ -30,36 +28,36 @@ export function PostCard({ post }: PostCardProps) {
               className="w-full h-full object-cover transition-transform group-hover:scale-105"
             />
           </div>
-        )}
-        <CardHeader className="pb-3">
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <time dateTime={post.date}>{format(new Date(post.date), "MMM d, yyyy")}</time>
-            <span>·</span>
-            <span>{post.readingTime}</span>
-          </div>
-          <CardTitle className="text-lg leading-snug group-hover:text-primary transition-colors">
+        </Link>
+      )}
+      <CardHeader className="pb-3">
+        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+          <time dateTime={post.date}>{format(new Date(post.date), "MMM d, yyyy")}</time>
+          <span>·</span>
+          <span>{post.readingTime}</span>
+        </div>
+        <CardTitle className="text-lg leading-snug group-hover:text-primary transition-colors">
+          <Link href={`/blog/${post.slug}`} className="hover:underline">
             {post.title}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
+          </Link>
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Link href={`/blog/${post.slug}`}>
           <p className="text-sm text-muted-foreground line-clamp-2">{post.excerpt}</p>
-          {post.tags.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-1.5">
-              {post.tags.map((tag) => (
-                <Link
-                  key={tag}
-                  href={`/blog/tag/${encodeURIComponent(tag)}`}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <Badge variant="secondary" className="text-[10px] hover:bg-secondary/80 cursor-pointer">
-                    {tag}
-                  </Badge>
-                </Link>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </Link>
+        </Link>
+        {post.tags.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {post.tags.map((tag) => (
+              <Link key={tag} href={`/blog/tag/${encodeURIComponent(tag)}`}>
+                <Badge variant="secondary" className="text-[10px] hover:bg-secondary/80 cursor-pointer">
+                  {tag}
+                </Badge>
+              </Link>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
