@@ -112,6 +112,7 @@ export async function isAuthenticated(request: NextRequest): Promise<boolean> {
     secret = ctx.env.SESSION_SECRET as string | undefined;
   } catch {
     // local dev fallback
+    secret = process.env.SESSION_SECRET;
   }
   if (!secret) return false;
 
@@ -161,10 +162,11 @@ export async function handleLogin(request: NextRequest): Promise<NextResponse> {
 
   const token = await createSessionToken(secret);
 
+  const isDev = process.env.NODE_ENV !== "production";
   const response = NextResponse.json({ success: true });
   response.cookies.set(SESSION_COOKIE, token, {
     httpOnly: true,
-    secure: true,
+    secure: !isDev,
     sameSite: "lax",
     maxAge: SESSION_MAX_AGE,
     path: "/",
@@ -173,11 +175,12 @@ export async function handleLogin(request: NextRequest): Promise<NextResponse> {
   return response;
 }
 
-export function handleLogout(): NextResponse {
-  const response = NextResponse.redirect(new URL("/admin/login", "https://moikapy.dev"));
+export function handleLogout(request?: NextRequest): NextResponse {
+  const isDev = process.env.NODE_ENV !== "production";
+  const response = NextResponse.redirect(new URL("/admin/login", request?.url || "https://moikapy.dev"));
   response.cookies.set(SESSION_COOKIE, "", {
     httpOnly: true,
-    secure: true,
+    secure: !isDev,
     sameSite: "lax",
     maxAge: 0,
     path: "/",

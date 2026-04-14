@@ -151,7 +151,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Content is required" }, { status: 400 });
   }
 
-  const content = body.content.slice(0, 2000);
+  const content = body.content.slice(0, 8000);
   const chunkLabel = body.totalChunks ? ` (chunk ${body.chunkIndex}/${body.totalChunks})` : "";
 
   // Build system prompt — include previous chunk context for style consistency
@@ -159,7 +159,9 @@ export async function POST(request: NextRequest) {
     ? `\n\nPrevious chunk was formatted as:\n${body.previousFormatted.slice(-500)}\n\nKeep formatting style consistent (heading levels, list styles, etc.).`
     : "";
 
-  const systemPrompt = `Reformat voice-dictated text into clean Markdown. Rules:
+  const systemPrompt = `Reformat voice-dictated text into clean Markdown. CRITICAL RULES:
+- You MUST include EVERY sentence from the input in the output. Do NOT summarize, abbreviate, or skip any content.
+- The output must contain ALL the same information as the input, just reformatted.
 - Split into paragraphs at topic shifts
 - Add ## or ### headings for new topics
 - Bullet lists for enumerated items

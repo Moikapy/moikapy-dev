@@ -210,112 +210,62 @@ export function AdminClient() {
     if (!formContent.trim()) return;
     setAiFormatting(true);
     setAiFormatError(null);
-    setFormatProgress("Splitting into sections...");
+    setFormatProgress("Formatting...");
 
-    // Split into ~1200-char chunks at paragraph boundaries
-    const paragraphs = formContent.split(/\n\s*\n/);
-    const chunks: string[] = [];
-    let currentChunk = "";
+    try {
+      const res = await fetch("/api/ai/format", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: formContent }),
+      });
 
-    for (const para of paragraphs) {
-      if (currentChunk.length + para.length + 2 > 1200 && currentChunk.length > 0) {
-        chunks.push(currentChunk.trim());
-        currentChunk = para;
-      } else {
-        currentChunk += (currentChunk ? "\n\n" : "") + para;
-      }
-    }
-    if (currentChunk.trim()) {
-      chunks.push(currentChunk.trim());
-    }
+      const contentType = res.headers.get("content-type") || "";
 
-    if (chunks.length === 0) {
-      setAiFormatting(false);
-      setFormatProgress("");
-      return;
-    }
-
-    const formattedChunks: string[] = [];
-
-    for (let i = 0; i < chunks.length; i++) {
-      setFormatProgress(`Formatting ${i + 1}/${chunks.length}...`);
-
-      try {
-        const res = await fetch("/api/ai/format", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            content: chunks[i],
-            chunkIndex: i + 1,
-            totalChunks: chunks.length,
-            // Pass previous chunk's formatted output for style consistency
-            previousFormatted: formattedChunks.length > 0
-              ? formattedChunks[formattedChunks.length - 1]
-              : undefined,
-          }),
-        });
-
-        const contentType = res.headers.get("content-type") || "";
-
-        // Error JSON response
-        if (contentType.includes("application/json")) {
-          const data = (await res.json()) as { error?: string };
-          setAiFormatError(data.error || "Format failed");
-          const partial = [...formattedChunks, ...chunks.slice(i)].join("\n\n");
-          setFormContent(partial);
-          setAiFormatting(false);
-          setFormatProgress("");
-          return;
-        }
-
-        // Stream tokens — includes continuation markers from the harness
-        if (res.body) {
-          const reader = res.body.getReader();
-          const decoder = new TextDecoder();
-          let chunkResult = "";
-
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-            chunkResult += decoder.decode(value, { stream: true });
-            // Strip continuation markers for final content but show them during streaming
-            const displayResult = chunkResult
-              .replace(/\n\n⏳ _Continuing formatting\.\.\.\n/g, "")
-              .replace(/\n\n⚠️ _Formatting may be incomplete.*_/, "")
-              .replace(/\n\n❌ _Format error.*_/, "")
-              .replace(/\n\n⏱️ _Format timed out.*_/, "");
-            const soFar = [...formattedChunks, displayResult].join("\n\n");
-            setFormContent(soFar);
-          }
-
-          // Clean the final result — strip harness markers
-          const cleanResult = chunkResult
-            .replace(/\n\n⏳ _Continuing formatting\.\.\.\n/g, "")
-            .replace(/\n\n⚠️ _Formatting may be incomplete[^]*_/, "")
-            .replace(/\n\n❌ _Format error[^]*_/, "")
-            .replace(/\n\n⏱️ _Format timed out[^]*_/, "");
-
-          if (cleanResult.trim()) {
-            formattedChunks.push(cleanResult.trim());
-          } else {
-            formattedChunks.push(chunks[i]);
-          }
-        }
-      } catch {
-        setAiFormatError(`Network error on chunk ${i + 1}/${chunks.length}.`);
-        const partial = [...formattedChunks, ...chunks.slice(i)].join("\n\n");
-        setFormContent(partial);
+      // Error JSON response
+      if (contentType.includes("application/json")) {
+        const data = (await res.json()) as { error?: string };
+        setAiFormatError(data.error || "Format failed");
         setAiFormatting(false);
         setFormatProgress("");
         return;
       }
+
+      // Stream tokens — includes continuation markers from the harness
+      if (res.body) {
+        const reader = res.body.getReader();
+        const decoder = new TextDecoder();
+        let result = "";
+
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          result += decoder.decode(value, { stream: true });
+          // Show live progress, stripping harness markers
+          const displayResult = result
+            .replace(/\n\n⏳ _Continuing formatting\.\.\.\n/g, "")
+            .replace(/\n\n⚠️ _Formatting may be incomplete.*_/, "")
+            .replace(/\n\n❌ _Format error.*_/, "")
+            .replace(/\n\n⏱️ _Format timed out.*_/, "");
+          setFormContent(displayResult);
+        }
+
+        // Final result — strip harness markers
+        const cleanResult = result
+          .replace(/\n\n⏳ _Continuing formatting\.\.\.\n/g, "")
+          .replace(/\n\n⚠️ _Formatting may be incomplete[^]*_/, "")
+          .replace(/\n\n❌ _Format error[^]*_/, "")
+          .replace(/\n\n⏱️ _Format timed out[^]*_/, "");
+
+        if (cleanResult.trim()) {
+          setFormContent(cleanResult.trim());
+        }
+      }
+    } catch {
+      setAiFormatError("Network error. Try again.");
+      setAiFormatting(false);
+      setFormatProgress("");
     }
 
-    // Final result
-    const result = formattedChunks.join("\n\n");
-    if (result.trim()) {
-      setFormContent(result);
-    }
     setAiFormatting(false);
     setFormatProgress("");
   }  async function handleSave() {

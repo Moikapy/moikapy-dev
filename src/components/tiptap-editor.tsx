@@ -27,7 +27,7 @@ import {
   Redo,
 } from "lucide-react";
 
-import { useCallback } from "react";
+import { useCallback, useEffect } from "react";
 import dynamic from "next/dynamic";
 
 const VoiceInput = dynamic(
@@ -85,6 +85,16 @@ export function TiptapEditor({ value, onChange, enableDictation }: TiptapEditorP
     },
     immediatelyRender: false,
   });
+
+  // Sync external value changes (e.g. AI formatting) into the editor
+  useEffect(() => {
+    if (!editor || editor.isDestroyed) return;
+    // Only update if the new value differs from what the editor currently has
+    const currentMd = (editor as any).storage?.markdown?.getMarkdown?.() ?? editor.getHTML();
+    if (value !== currentMd) {
+      editor.commands.setContent(value);
+    }
+  }, [value, editor]);
 
   // Insert dictated text at cursor position in the editor
   const handleDictationSegment = useCallback(
