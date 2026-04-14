@@ -73,6 +73,10 @@ export function AdminClient() {
   const [aiSuggestion, setAiSuggestion] = useState<AISuggestion | null>(null);
   const [aiError, setAiError] = useState<string | null>(null);
 
+  // AI format state
+  const [aiFormatting, setAiFormatting] = useState(false);
+  const [aiFormatError, setAiFormatError] = useState<string | null>(null);
+
   // Analytics state
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
@@ -199,6 +203,30 @@ export function AdminClient() {
     if (field === "title") setFormTitle(aiSuggestion.title);
     if (field === "slug") setEditSlug(aiSuggestion.slug);
     if (field === "excerpt") setFormExcerpt(aiSuggestion.excerpt);
+  }
+
+  async function handleFormatContent() {
+    if (!formContent.trim()) return;
+    setAiFormatting(true);
+    setAiFormatError(null);
+    try {
+      const res = await fetch("/api/ai/format", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: formContent }),
+      });
+      if (!res.ok) {
+        const err: { error?: string } = await res.json();
+        setAiFormatError(err.error || "Failed to format");
+        return;
+      }
+      const data: { content: string } = await res.json();
+      setFormContent(data.content);
+    } catch {
+      setAiFormatError("Network error");
+    } finally {
+      setAiFormatting(false);
+    }
   }
 
   async function handleSave() {
@@ -673,25 +701,36 @@ export function AdminClient() {
 
         <Separator />
 
-        {/* AI Suggestions */}
+        {/* AI Tools */}
         <div className="rounded-lg border border-border bg-muted/30 p-4">
           <div className="flex items-center justify-between mb-2">
-            <h3 className="text-sm font-medium">AI Suggestions</h3>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={handleAiSuggest}
-              disabled={aiSuggesting || !formContent.trim()}
-            >
-              {aiSuggesting ? "Thinking..." : "✨ Suggest"}
-            </Button>
+            <h3 className="text-sm font-medium">AI Tools</h3>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleFormatContent}
+                disabled={aiFormatting || !formContent.trim()}
+              >
+                {aiFormatting ? "Formatting..." : "📝 Format"}
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleAiSuggest}
+                disabled={aiSuggesting || !formContent.trim()}
+              >
+                {aiSuggesting ? "Thinking..." : "✨ Suggest"}
+              </Button>
+            </div>
           </div>
           <p className="text-xs text-muted-foreground mb-3">
-            Uses <code className="text-[11px] bg-muted px-1 rounded">glm-5.1</code> to suggest title, slug, and excerpt based on your content.
+            <strong>Format</strong> — fix paragraphs, headings, punctuation from voice dictation.{" "}
+            <strong>Suggest</strong> — generate title, slug & excerpt.
           </p>
 
-          {aiError && (
-            <p className="text-xs text-destructive mb-2">{aiError}</p>
+          {(aiError || aiFormatError) && (
+            <p className="text-xs text-destructive mb-2">{aiError || aiFormatError}</p>
           )}
 
           {aiSuggestion && (

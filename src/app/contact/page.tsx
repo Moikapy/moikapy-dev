@@ -1,6 +1,4 @@
 import { siteConfig, socialIcons, socialLabels } from "@/lib/config";
-import { Header } from "@/components/header";
-import { Footer } from "@/components/footer";
 
 export const metadata = {
   title: "Contact",
@@ -39,9 +37,7 @@ const socialOrder: string[] = [
 
 export default function ContactPage() {
   return (
-    <>
-      <Header />
-      <main className="mx-auto max-w-2xl px-4 sm:px-6 py-16">
+    <main className="mx-auto max-w-2xl px-4 sm:px-6 py-16">
         <h1 className="text-3xl font-bold mb-4">Get in Touch</h1>
         <p className="text-muted-foreground mb-10">
           Want to collaborate, ask a question, or just say hey? Hit me up on any
@@ -89,7 +85,5 @@ export default function ContactPage() {
           })}
         </div>
       </main>
-      <Footer />
-    </>
   );
 }
