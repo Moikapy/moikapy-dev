@@ -210,95 +210,50 @@ export function AdminClient() {
     setAiFormatting(true);
     setAiFormatError(null);
 
-    // Split content into chunks by paragraphs
-    // Preserve empty lines as paragraph separators
-    const paragraphs = formContent.split(/\n\s*\n/);
-    const chunks: string[] = [];
-    let currentChunk = "";
+    try {
+      const res = await fetch("/api/ai/format", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ content: formContent }),
+      });
 
-    for (const para of paragraphs) {
-      // Keep chunks under ~1500 chars for fast AI responses
-      if (currentChunk.length + para.length + 2 > 1500 && currentChunk.length > 0) {
-        chunks.push(currentChunk.trim());
-        currentChunk = para;
-      } else {
-        currentChunk += (currentChunk ? "\n\n" : "") + para;
-      }
-    }
-    if (currentChunk.trim()) {
-      chunks.push(currentChunk.trim());
-    }
-
-    if (chunks.length === 0) {
-      setAiFormatting(false);
-      return;
-    }
-
-    // If only 1 chunk, format directly (no progress indicator needed)
-    if (chunks.length === 1) {
-      try {
-        const res = await fetch("/api/ai/format", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content: chunks[0] }),
-        });
-        const data = (await res.json()) as { content?: string; error?: string };
-        if (data.error) {
-          setAiFormatError(data.error);
-          return;
-        }
-        if (data.content && data.content.trim()) {
-          setFormContent(data.content);
-        } else {
-          setAiFormatError("AI returned empty content. Try again.");
-        }
-      } catch {
-        setAiFormatError("Network error. Try again.");
-      } finally {
-        setAiFormatting(false);
-      }
-      return;
-    }
-
-    // Multiple chunks: format sequentially and reassemble
-    const formattedChunks: string[] = [];
-    for (let i = 0; i < chunks.length; i++) {
-      setAiFormatting(true);
-      try {
-        const res = await fetch("/api/ai/format", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ content: chunks[i] }),
-        });
-        const data = (await res.json()) as { content?: string; error?: string };
-        if (data.error) {
-          setAiFormatError(`Chunk ${i + 1}/${chunks.length}: ${data.error}`);
-          // Keep what we have so far + remaining unformatted
-          setFormContent(
-            [...formattedChunks, ...chunks.slice(i)].join("\n\n")
-          );
-          return;
-        }
-        if (data.content?.trim()) {
-          formattedChunks.push(data.content.trim());
-        } else {
-          formattedChunks.push(chunks[i]); // Keep original if AI failed
-        }
-      } catch {
-        setAiFormatError(`Network error on chunk ${i + 1}/${chunks.length}. Try again.`);
-        setFormContent(
-          [...formattedChunks, ...chunks.slice(i)].join("\n\n")
-        );
+      // Check if we got an error JSON instead of a stream
+      const contentType = res.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        const data = (await res.json()) as { error?: string };
+        setAiFormatError(data.error || "Failed to format");
         return;
       }
-    }
 
-    // Reassemble with double newlines between chunks
-    const result = formattedChunks.join("\n\n");
-    if (result.trim()) {
-      setFormContent(result);
+      if (!res.body) {
+        setAiFormatError("No response stream");
+        return;
+      }
+
+      // Stream tokens into the editor live
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let formatted = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        formatted += decoder.decode(value, { stream: true });
+        setFormContent(formatted);
+      }
+
+      // Final cleanup
+      const final = formatted.trim();
+      if (!final) {
+        setAiFormatError("AI returned empty content. Try again.");
+        // Restore original
+        setFormContent(formContent);
+      }
+    } catch {
+      setAiFormatError("Network error. Try again.");
+    } finally {
+      setAiFormatting(false);
     }
-    setAiFormatting(false);
   }
 
   async function handleSave() {
