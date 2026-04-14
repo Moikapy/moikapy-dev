@@ -248,6 +248,10 @@ export function AdminClient() {
             content: chunks[i],
             chunkIndex: i + 1,
             totalChunks: chunks.length,
+            // Pass previous chunk's formatted output for style consistency
+            previousFormatted: formattedChunks.length > 0
+              ? formattedChunks[formattedChunks.length - 1]
+              : undefined,
           }),
         });
 
@@ -264,7 +268,7 @@ export function AdminClient() {
           return;
         }
 
-        // Stream tokens
+        // Stream tokens — includes continuation markers from the harness
         if (res.body) {
           const reader = res.body.getReader();
           const decoder = new TextDecoder();
@@ -274,13 +278,25 @@ export function AdminClient() {
             const { done, value } = await reader.read();
             if (done) break;
             chunkResult += decoder.decode(value, { stream: true });
-            // Show progress: already-done chunks + currently streaming chunk
-            const soFar = [...formattedChunks, chunkResult].join("\n\n");
+            // Strip continuation markers for final content but show them during streaming
+            const displayResult = chunkResult
+              .replace(/\n\n⏳ _Continuing formatting\.\.\.\n/g, "")
+              .replace(/\n\n⚠️ _Formatting may be incomplete.*_/, "")
+              .replace(/\n\n❌ _Format error.*_/, "")
+              .replace(/\n\n⏱️ _Format timed out.*_/, "");
+            const soFar = [...formattedChunks, displayResult].join("\n\n");
             setFormContent(soFar);
           }
 
-          if (chunkResult.trim()) {
-            formattedChunks.push(chunkResult.trim());
+          // Clean the final result — strip harness markers
+          const cleanResult = chunkResult
+            .replace(/\n\n⏳ _Continuing formatting\.\.\.\n/g, "")
+            .replace(/\n\n⚠️ _Formatting may be incomplete[^]*_/, "")
+            .replace(/\n\n❌ _Format error[^]*_/, "")
+            .replace(/\n\n⏱️ _Format timed out[^]*_/, "");
+
+          if (cleanResult.trim()) {
+            formattedChunks.push(cleanResult.trim());
           } else {
             formattedChunks.push(chunks[i]);
           }
