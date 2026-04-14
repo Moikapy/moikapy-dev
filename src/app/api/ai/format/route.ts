@@ -61,6 +61,7 @@ export async function POST(request: NextRequest) {
           { role: "user", content: content },
         ],
         stream: true,
+        options: { num_predict: 8192 },
       }),
       signal: controller.signal,
     });
@@ -97,19 +98,9 @@ export async function POST(request: NextRequest) {
       async start(controller) {
         const reader = response.body!.getReader();
         let buffer = "";
-        let totalElapsed = 0;
-        const startTime = Date.now();
 
         try {
           while (true) {
-            // Check hard timeout
-            totalElapsed = Date.now() - startTime;
-            if (totalElapsed > MAX_TIMEOUT_MS) {
-              console.error("[ai/format] Hard timeout after", Math.round(totalElapsed / 1000), "s");
-              controller.close();
-              break;
-            }
-
             const { done, value } = await reader.read();
             if (done) {
               clearTimeout(timeout);
@@ -144,7 +135,7 @@ export async function POST(request: NextRequest) {
         } catch (err) {
           clearTimeout(timeout);
           if ((err as Error).name === "AbortError") {
-            console.error("[ai/format] Aborted after", Math.round((Date.now() - startTime) / 1000), "s");
+            console.error("[ai/format] Aborted");
           } else {
             console.error("[ai/format] Stream error:", err);
           }
