@@ -215,15 +215,25 @@ export function AdminClient() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ content: formContent }),
       });
-      if (!res.ok) {
-        const err: { error?: string } = await res.json();
-        setAiFormatError(err.error || "Failed to format");
+      const data = (await res.json()) as { content?: string; error?: string };
+      // Route always returns 200 with { error } or { content }
+      if (data.error) {
+        setAiFormatError(data.error);
         return;
       }
-      const data: { content: string } = await res.json();
-      setFormContent(data.content);
+      const formatted: string | undefined = data.content;
+      if (!formatted || !formatted.trim()) {
+        setAiFormatError("AI returned empty content. Try again.");
+        return;
+      }
+      // Safety: only apply if the result is reasonable (not way shorter than original)
+      if (formatted.length < formContent.length * 0.3) {
+        setAiFormatError("Formatted content seems too short — keeping original.");
+        return;
+      }
+      setFormContent(formatted);
     } catch {
-      setAiFormatError("Network error");
+      setAiFormatError("Network error. Try again.");
     } finally {
       setAiFormatting(false);
     }
