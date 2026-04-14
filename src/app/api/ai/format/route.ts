@@ -64,7 +64,8 @@ async function callModel(
       model: MODEL,
       messages,
       stream: true,
-      options: { num_predict: 4096 },
+      think: false, // Disable chain-of-thought — it eats the token budget before content starts
+      options: { num_predict: 8192 },
     }),
     signal,
   });
