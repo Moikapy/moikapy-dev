@@ -76,6 +76,7 @@ export function AdminClient() {
   // AI format state
   const [aiFormatting, setAiFormatting] = useState(false);
   const [aiFormatError, setAiFormatError] = useState<string | null>(null);
+  const [formatProgress, setFormatProgress] = useState("");
 
   // Analytics state
   const [analytics, setAnalytics] = useState<AnalyticsData | null>(null);
@@ -209,54 +210,99 @@ export function AdminClient() {
     if (!formContent.trim()) return;
     setAiFormatting(true);
     setAiFormatError(null);
-    const originalContent = formContent;
+    setFormatProgress("Splitting into sections...");
 
-    try {
-      const res = await fetch("/api/ai/format", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: formContent }),
-      });
+    // Split into ~1200-char chunks at paragraph boundaries
+    const paragraphs = formContent.split(/\n\s*\n/);
+    const chunks: string[] = [];
+    let currentChunk = "";
 
-      // Check if we got an error JSON instead of a stream
-      const contentType = res.headers.get("content-type") || "";
-      if (contentType.includes("application/json")) {
-        const data = (await res.json()) as { error?: string };
-        setAiFormatError(data.error || "Failed to format");
-        return;
+    for (const para of paragraphs) {
+      if (currentChunk.length + para.length + 2 > 1200 && currentChunk.length > 0) {
+        chunks.push(currentChunk.trim());
+        currentChunk = para;
+      } else {
+        currentChunk += (currentChunk ? "\n\n" : "") + para;
       }
-
-      if (!res.body) {
-        setAiFormatError("No response stream");
-        return;
-      }
-
-      // Stream tokens into the editor
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let formatted = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        formatted += decoder.decode(value, { stream: true });
-        setFormContent(formatted);
-      }
-
-      const final = formatted.trim();
-      if (!final) {
-        // Restore original if AI returned nothing
-        setFormContent(originalContent);
-        setAiFormatError("AI returned empty content. Try again.");
-      }
-    } catch {
-      setAiFormatError("Network error. Try again.");
-    } finally {
-      setAiFormatting(false);
     }
-  }
+    if (currentChunk.trim()) {
+      chunks.push(currentChunk.trim());
+    }
 
-  async function handleSave() {
+    if (chunks.length === 0) {
+      setAiFormatting(false);
+      setFormatProgress("");
+      return;
+    }
+
+    const formattedChunks: string[] = [];
+
+    for (let i = 0; i < chunks.length; i++) {
+      setFormatProgress(`Formatting ${i + 1}/${chunks.length}...`);
+
+      try {
+        const res = await fetch("/api/ai/format", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            content: chunks[i],
+            chunkIndex: i + 1,
+            totalChunks: chunks.length,
+          }),
+        });
+
+        const contentType = res.headers.get("content-type") || "";
+
+        // Error JSON response
+        if (contentType.includes("application/json")) {
+          const data = (await res.json()) as { error?: string };
+          setAiFormatError(data.error || "Format failed");
+          const partial = [...formattedChunks, ...chunks.slice(i)].join("\n\n");
+          setFormContent(partial);
+          setAiFormatting(false);
+          setFormatProgress("");
+          return;
+        }
+
+        // Stream tokens
+        if (res.body) {
+          const reader = res.body.getReader();
+          const decoder = new TextDecoder();
+          let chunkResult = "";
+
+          while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            chunkResult += decoder.decode(value, { stream: true });
+            // Show progress: already-done chunks + currently streaming chunk
+            const soFar = [...formattedChunks, chunkResult].join("\n\n");
+            setFormContent(soFar);
+          }
+
+          if (chunkResult.trim()) {
+            formattedChunks.push(chunkResult.trim());
+          } else {
+            formattedChunks.push(chunks[i]);
+          }
+        }
+      } catch {
+        setAiFormatError(`Network error on chunk ${i + 1}/${chunks.length}.`);
+        const partial = [...formattedChunks, ...chunks.slice(i)].join("\n\n");
+        setFormContent(partial);
+        setAiFormatting(false);
+        setFormatProgress("");
+        return;
+      }
+    }
+
+    // Final result
+    const result = formattedChunks.join("\n\n");
+    if (result.trim()) {
+      setFormContent(result);
+    }
+    setAiFormatting(false);
+    setFormatProgress("");
+  }  async function handleSave() {
     setSaving(true);
     const tags = formTags
       .split(",")
@@ -739,7 +785,7 @@ export function AdminClient() {
                 onClick={handleFormatContent}
                 disabled={aiFormatting || !formContent.trim()}
               >
-                {aiFormatting ? "Formatting..." : "📝 Format"}
+                {aiFormatting ? (formatProgress || "Formatting...") : "📝 Format"}
               </Button>
               <Button
                 size="sm"
