@@ -45,6 +45,7 @@ const navPages = [
   { href: "/kapy", label: "Kapy" },
   { href: "/token", label: "$KAPY" },
   { href: "/traces", label: "Traces" },
+  { href: "/contact", label: "Contact" },
 ] as const;
 
 export function Header() {
