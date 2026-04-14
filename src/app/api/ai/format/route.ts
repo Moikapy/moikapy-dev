@@ -53,7 +53,7 @@ export async function POST(request: NextRequest) {
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: "kimi-k2.5",
+        model: "kimi-k2.5:cloud",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: content },
@@ -82,7 +82,7 @@ export async function POST(request: NextRequest) {
               Authorization: `Bearer ${apiKey}`,
             },
             body: JSON.stringify({
-              model: "glm-5.1",
+              model: "glm-5.1:cloud",
               messages: [
                 { role: "system", content: systemPrompt },
                 { role: "user", content: content },

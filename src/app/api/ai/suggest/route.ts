@@ -60,7 +60,7 @@ Respond with exactly this JSON shape:
         Authorization: `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: "glm-5.1",
+        model: "glm-5.1:cloud",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
