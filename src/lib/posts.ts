@@ -142,6 +142,11 @@ export async function getAllTags(): Promise<string[]> {
   return Array.from(tagSet).sort();
 }
 
+export async function getPostsByTag(tag: string): Promise<PostWithReadingTime[]> {
+  const allPosts = await getAllPublishedPosts();
+  return allPosts.filter((post) => parseTags(post.tags).some((t) => t.toLowerCase() === tag.toLowerCase()));
+}
+
 // Helper to parse tags JSON field
 export function parsePostTags(post: Post): string[] {
   return parseTags(post.tags);

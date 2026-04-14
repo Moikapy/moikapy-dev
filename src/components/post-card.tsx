@@ -44,9 +44,15 @@ export function PostCard({ post }: PostCardProps) {
           {post.tags.length > 0 && (
             <div className="mt-3 flex flex-wrap gap-1.5">
               {post.tags.map((tag) => (
-                <Badge key={tag} variant="secondary" className="text-[10px]">
-                  {tag}
-                </Badge>
+                <Link
+                  key={tag}
+                  href={`/blog/tag/${encodeURIComponent(tag)}`}
+                  onClick={(e) => e.stopPropagation()}
+                >
+                  <Badge variant="secondary" className="text-[10px] hover:bg-secondary/80 cursor-pointer">
+                    {tag}
+                  </Badge>
+                </Link>
               ))}
             </div>
           )}

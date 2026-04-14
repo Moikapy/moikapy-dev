@@ -95,9 +95,11 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         {tags.length > 0 && (
           <div className="mt-4 flex flex-wrap gap-1.5">
             {tags.map((tag) => (
-              <Badge key={tag} variant="secondary">
-                {tag}
-              </Badge>
+              <Link key={tag} href={`/blog/tag/${encodeURIComponent(tag)}`}>
+                <Badge variant="secondary" className="hover:bg-secondary/80 cursor-pointer">
+                  {tag}
+                </Badge>
+              </Link>
             ))}
           </div>
         )}
