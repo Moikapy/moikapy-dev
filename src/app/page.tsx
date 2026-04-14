@@ -55,7 +55,7 @@ export default async function Home() {
         {recentPosts.length === 0 ? (
           <p className="text-muted-foreground">No posts yet. Check back soon!</p>
         ) : (
-          <div className="columns-1 sm:columns-2 gap-4 space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2 [grid-auto-rows:auto]">
             {recentPosts.map((post) => (
               <PostCard
                 key={post.slug}
