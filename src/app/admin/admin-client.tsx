@@ -209,6 +209,7 @@ export function AdminClient() {
     if (!formContent.trim()) return;
     setAiFormatting(true);
     setAiFormatError(null);
+    const originalContent = formContent;
 
     try {
       const res = await fetch("/api/ai/format", {
@@ -217,16 +218,35 @@ export function AdminClient() {
         body: JSON.stringify({ content: formContent }),
       });
 
-      const data = (await res.json()) as { content?: string; error?: string };
-
-      if (data.error) {
-        setAiFormatError(data.error);
+      // Check if we got an error JSON instead of a stream
+      const contentType = res.headers.get("content-type") || "";
+      if (contentType.includes("application/json")) {
+        const data = (await res.json()) as { error?: string };
+        setAiFormatError(data.error || "Failed to format");
         return;
       }
 
-      if (data.content?.trim()) {
-        setFormContent(data.content);
-      } else {
+      if (!res.body) {
+        setAiFormatError("No response stream");
+        return;
+      }
+
+      // Stream tokens into the editor
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let formatted = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        formatted += decoder.decode(value, { stream: true });
+        setFormContent(formatted);
+      }
+
+      const final = formatted.trim();
+      if (!final) {
+        // Restore original if AI returned nothing
+        setFormContent(originalContent);
         setAiFormatError("AI returned empty content. Try again.");
       }
     } catch {
