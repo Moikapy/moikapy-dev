@@ -13,8 +13,6 @@ function getOllamaApiKey(): string | undefined {
   }
 }
 
-export const dynamic = "force-dynamic";
-
 export async function POST(request: NextRequest) {
   const apiKey = getOllamaApiKey();
   if (!apiKey) {
@@ -32,7 +30,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Content is required" }, { status: 400 });
   }
 
-  const content = body.content.slice(0, 2000);
+  // Limit content — this model works for suggestions, just need reasonable input size
+  const content = body.content.slice(0, 3000);
 
   const systemPrompt = `Reformat voice-dictated text into clean Markdown. Rules:
 - Split into paragraphs at topic shifts
@@ -44,6 +43,9 @@ export async function POST(request: NextRequest) {
 - Output ONLY reformatted Markdown, no explanation`;
 
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 90_000);
+
     const response = await fetch(OLLAMA_API_URL, {
       method: "POST",
       headers: {
@@ -56,9 +58,12 @@ export async function POST(request: NextRequest) {
           { role: "system", content: systemPrompt },
           { role: "user", content: content },
         ],
-        stream: true,
+        stream: false,
       }),
+      signal: controller.signal,
     });
+
+    clearTimeout(timeout);
 
     if (!response.ok) {
       const errorText = await response.text().catch(() => "");
@@ -69,78 +74,28 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (!response.body) {
-      return NextResponse.json({ error: "No response body from AI" }, { status: 200 });
+    const data: { message?: { content?: string }; choices?: { message?: { content?: string } }[] } = await response.json();
+    let formatted = data.message?.content ?? data.choices?.[0]?.message?.content ?? "";
+
+    // Strip markdown code block wrapping if present
+    const codeBlockMatch = formatted.match(/^```(?:markdown|md)?\s*\n?([\s\S]*?)\n?```$/);
+    if (codeBlockMatch) {
+      formatted = codeBlockMatch[1];
     }
 
-    // Stream the NDJSON response from Ollama as plain text chunks
-    const encoder = new TextEncoder();
-    const decoder = new TextDecoder();
+    if (!formatted.trim()) {
+      return NextResponse.json({ error: "AI returned empty content. Try again." }, { status: 200 });
+    }
 
-    const stream = new ReadableStream({
-      async start(controller) {
-        const reader = response.body!.getReader();
-        let buffer = "";
-
-        try {
-          while (true) {
-            const { done, value } = await reader.read();
-            if (done) break;
-
-            buffer += decoder.decode(value, { stream: true });
-            const lines = buffer.split("\n");
-            buffer = lines.pop() || ""; // Keep incomplete line in buffer
-
-            for (const line of lines) {
-              const trimmed = line.trim();
-              if (!trimmed) continue;
-
-              try {
-                const parsed = JSON.parse(trimmed);
-                const token = parsed.message?.content ?? parsed.choices?.[0]?.delta?.content ?? "";
-                if (token) {
-                  controller.enqueue(encoder.encode(token));
-                }
-                // Check for done signal
-                if (parsed.done === true) {
-                  controller.close();
-                  return;
-                }
-              } catch {
-                // Not valid JSON, skip
-              }
-            }
-          }
-
-          // Process any remaining buffer
-          if (buffer.trim()) {
-            try {
-              const parsed = JSON.parse(buffer.trim());
-              const token = parsed.message?.content ?? parsed.choices?.[0]?.delta?.content ?? "";
-              if (token) {
-                controller.enqueue(encoder.encode(token));
-              }
-            } catch {
-              // Ignore
-            }
-          }
-
-          controller.close();
-        } catch (err) {
-          console.error("[ai/format] Stream error:", err);
-          controller.error(err);
-        }
-      },
-    });
-
-    return new Response(stream, {
-      headers: {
-        "Content-Type": "text/plain; charset=utf-8",
-        "Cache-Control": "no-cache",
-        "Transfer-Encoding": "chunked",
-      },
-    });
-  } catch (err) {
+    return NextResponse.json({ content: formatted.trim() });
+  } catch (err: any) {
+    if (err?.name === "AbortError") {
+      console.error("[ai/format] Timed out after 90s");
+      return NextResponse.json(
+        { error: "AI took too long. Try with shorter content." },
+        { status: 200 }
+      );
+    }
     console.error("[ai/format] Error:", err);
     return NextResponse.json(
       { error: "Failed to format. Try again." },

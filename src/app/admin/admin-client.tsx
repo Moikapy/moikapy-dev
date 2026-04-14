@@ -217,37 +217,17 @@ export function AdminClient() {
         body: JSON.stringify({ content: formContent }),
       });
 
-      // Check if we got an error JSON instead of a stream
-      const contentType = res.headers.get("content-type") || "";
-      if (contentType.includes("application/json")) {
-        const data = (await res.json()) as { error?: string };
-        setAiFormatError(data.error || "Failed to format");
+      const data = (await res.json()) as { content?: string; error?: string };
+
+      if (data.error) {
+        setAiFormatError(data.error);
         return;
       }
 
-      if (!res.body) {
-        setAiFormatError("No response stream");
-        return;
-      }
-
-      // Stream tokens into the editor live
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let formatted = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        formatted += decoder.decode(value, { stream: true });
-        setFormContent(formatted);
-      }
-
-      // Final cleanup
-      const final = formatted.trim();
-      if (!final) {
+      if (data.content?.trim()) {
+        setFormContent(data.content);
+      } else {
         setAiFormatError("AI returned empty content. Try again.");
-        // Restore original
-        setFormContent(formContent);
       }
     } catch {
       setAiFormatError("Network error. Try again.");
