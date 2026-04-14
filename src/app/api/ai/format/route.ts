@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const OLLAMA_API_URL = "https://ollama.com/api/chat";
-const TIMEOUT_MS = 25_000;
+const TIMEOUT_MS = 60_000; // 60s — cloud subrequests don't count against Worker CPU time
 
 function getOllamaApiKey(): string | undefined {
   try {
