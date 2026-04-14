@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const OLLAMA_API_URL = "https://ollama.com/api/chat";
+const TIMEOUT_MS = 20_000; // Keep well under Cloudflare's 100s limit
 
 function getOllamaApiKey(): string | undefined {
   try {
@@ -29,22 +30,15 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Content is required" }, { status: 400 });
   }
 
-  const content = body.content.slice(0, 8000);
+  // Limit to 3000 chars to keep AI response fast — enough for a typical blog section
+  const content = body.content.slice(0, 3000);
 
-  const systemPrompt = `You are a blog post formatting assistant. The user dictated a blog post using voice-to-text, which produced raw run-on text without proper formatting. Your job is to reformat it into clean, readable Markdown.
-
-Rules:
-- Split text into proper paragraphs (group related sentences, break at topic shifts)
-- Add headings (## or ###) where topics change significantly
-- Add bullet lists for enumerated items
-- Fix obvious dictation artifacts: remove filler words ("um", "uh", "like"), fix homophones ("there" vs "their"), clean up run-on sentences
-- Fix punctuation: add periods, commas, capitalization
-- Do NOT change the meaning, tone, or substance of the content
-- Do NOT add new information or remove significant content
-- Preserve any existing Markdown formatting the user already applied
-- Return ONLY the reformatted Markdown content — no explanation, no wrapping`;
+  const systemPrompt = `Reformat voice-dictated text into clean Markdown. Split into paragraphs, add headings (##/###) for topic changes, bullet lists for items, fix punctuation and remove filler words (um, uh). Preserve existing Markdown. Do NOT change meaning or add information. Output ONLY the formatted Markdown.`;
 
   try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
+
     const response = await fetch(OLLAMA_API_URL, {
       method: "POST",
       headers: {
@@ -55,19 +49,22 @@ Rules:
         model: "glm-5.1",
         messages: [
           { role: "system", content: systemPrompt },
-          { role: "user", content: `Here is the voice-dictated text to format:\n\n${content}` },
+          { role: "user", content: `Format this dictated text:\n\n${content}` },
         ],
         stream: false,
       }),
+      signal: controller.signal,
     });
 
+    clearTimeout(timeout);
+
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error("[ai/format] Ollama error:", response.status, errorText);
-      return NextResponse.json(
-        { error: `AI returned ${response.status}` },
-        { status: 502 }
-      );
+      const errorText = await response.text().catch(() => "");
+      console.error("[ai/format] Ollama error:", response.status, errorText.slice(0, 300));
+      const msg = response.status === 524
+        ? "AI service timed out. Try with shorter content."
+        : `AI service returned ${response.status}. Try again in a moment.`;
+      return NextResponse.json({ error: msg }, { status: 200 });
     }
 
     const data: { message?: { content?: string }; choices?: { message?: { content?: string } }[] } = await response.json();
@@ -80,15 +77,22 @@ Rules:
     }
 
     if (!formatted.trim()) {
-      return NextResponse.json({ error: "AI returned empty content" }, { status: 502 });
+      return NextResponse.json({ error: "AI returned empty content. Try again." }, { status: 200 });
     }
 
     return NextResponse.json({ content: formatted.trim() });
-  } catch (err) {
+  } catch (err: any) {
+    if (err?.name === "AbortError") {
+      console.error("[ai/format] Request timed out after", TIMEOUT_MS, "ms");
+      return NextResponse.json(
+        { error: "AI took too long. Try formatting a shorter section, or try again." },
+        { status: 200 }
+      );
+    }
     console.error("[ai/format] Error:", err);
     return NextResponse.json(
-      { error: "Failed to format content" },
-      { status: 500 }
+      { error: "Failed to format content. Try again in a moment." },
+      { status: 200 }
     );
   }
 }
