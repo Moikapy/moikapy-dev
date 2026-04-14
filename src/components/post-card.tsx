@@ -18,7 +18,7 @@ interface PostCardProps {
 
 export function PostCard({ post }: PostCardProps) {
   return (
-    <Link href={`/blog/${post.slug}`}>
+    <Link href={`/blog/${post.slug}`} className="break-inside-avoid">
       <Card className="group h-full transition-all hover:border-primary/50 hover:shadow-md overflow-hidden">
         {post.coverImage && (
           <div className="aspect-[2/1] overflow-hidden">
