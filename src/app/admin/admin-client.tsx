@@ -209,34 +209,96 @@ export function AdminClient() {
     if (!formContent.trim()) return;
     setAiFormatting(true);
     setAiFormatError(null);
-    try {
-      const res = await fetch("/api/ai/format", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: formContent }),
-      });
-      const data = (await res.json()) as { content?: string; error?: string };
-      // Route always returns 200 with { error } or { content }
-      if (data.error) {
-        setAiFormatError(data.error);
-        return;
+
+    // Split content into chunks by paragraphs
+    // Preserve empty lines as paragraph separators
+    const paragraphs = formContent.split(/\n\s*\n/);
+    const chunks: string[] = [];
+    let currentChunk = "";
+
+    for (const para of paragraphs) {
+      // Keep chunks under ~1500 chars for fast AI responses
+      if (currentChunk.length + para.length + 2 > 1500 && currentChunk.length > 0) {
+        chunks.push(currentChunk.trim());
+        currentChunk = para;
+      } else {
+        currentChunk += (currentChunk ? "\n\n" : "") + para;
       }
-      const formatted: string | undefined = data.content;
-      if (!formatted || !formatted.trim()) {
-        setAiFormatError("AI returned empty content. Try again.");
-        return;
-      }
-      // Safety: only apply if the result is reasonable (not way shorter than original)
-      if (formatted.length < formContent.length * 0.3) {
-        setAiFormatError("Formatted content seems too short — keeping original.");
-        return;
-      }
-      setFormContent(formatted);
-    } catch {
-      setAiFormatError("Network error. Try again.");
-    } finally {
-      setAiFormatting(false);
     }
+    if (currentChunk.trim()) {
+      chunks.push(currentChunk.trim());
+    }
+
+    if (chunks.length === 0) {
+      setAiFormatting(false);
+      return;
+    }
+
+    // If only 1 chunk, format directly (no progress indicator needed)
+    if (chunks.length === 1) {
+      try {
+        const res = await fetch("/api/ai/format", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: chunks[0] }),
+        });
+        const data = (await res.json()) as { content?: string; error?: string };
+        if (data.error) {
+          setAiFormatError(data.error);
+          return;
+        }
+        if (data.content && data.content.trim()) {
+          setFormContent(data.content);
+        } else {
+          setAiFormatError("AI returned empty content. Try again.");
+        }
+      } catch {
+        setAiFormatError("Network error. Try again.");
+      } finally {
+        setAiFormatting(false);
+      }
+      return;
+    }
+
+    // Multiple chunks: format sequentially and reassemble
+    const formattedChunks: string[] = [];
+    for (let i = 0; i < chunks.length; i++) {
+      setAiFormatting(true);
+      try {
+        const res = await fetch("/api/ai/format", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ content: chunks[i] }),
+        });
+        const data = (await res.json()) as { content?: string; error?: string };
+        if (data.error) {
+          setAiFormatError(`Chunk ${i + 1}/${chunks.length}: ${data.error}`);
+          // Keep what we have so far + remaining unformatted
+          setFormContent(
+            [...formattedChunks, ...chunks.slice(i)].join("\n\n")
+          );
+          return;
+        }
+        if (data.content?.trim()) {
+          formattedChunks.push(data.content.trim());
+        } else {
+          formattedChunks.push(chunks[i]); // Keep original if AI failed
+        }
+      } catch {
+        setAiFormatError(`Network error on chunk ${i + 1}/${chunks.length}. Try again.`);
+        setFormContent(
+          [...formattedChunks, ...chunks.slice(i)].join("\n\n")
+        );
+        return;
+      }
+    }
+
+    // Reassemble with double newlines between chunks
+    const result = formattedChunks.join("\n\n");
+    if (result.trim()) {
+      setFormContent(result);
+    }
+    setAiFormatting(false);
   }
 
   async function handleSave() {
