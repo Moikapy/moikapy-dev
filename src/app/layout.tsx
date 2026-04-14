@@ -1,9 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
-import { Header } from "@/components/header";
-import { Footer } from "@/components/footer";
-import { DevBanner } from "@/components/dev-banner";
 import { ServiceWorkerRegistrar } from "@/components/sw-registrar";
 import { siteConfig } from "@/lib/config";
 
@@ -59,12 +56,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <body className={`${inter.className} min-h-screen bg-background text-foreground antialiased`}>
-        <div className="relative flex min-h-screen flex-col">
-          <DevBanner />
-          <Header />
-          <main className="flex-1">{children}</main>
-          <Footer />
-        </div>
+        {children}
         <ServiceWorkerRegistrar />
         <script
           defer
@@ -73,7 +65,7 @@ export default function RootLayout({
         />
         <script
           dangerouslySetInnerHTML={{
-            __html: `if(typeof fetch!=="undefined"){fetch("/api/analytics/track",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({path:location.pathname,ref:document.referrer}),keepalive:true}).catch(function(){})}`,
+            __html: `if(typeof fetch!=="undefined"&&!location.pathname.startsWith("/admin")){fetch("/api/analytics/track",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({path:location.pathname,ref:document.referrer}),keepalive:true}).catch(function(){})}`,
           }}
         />
       </body>
