@@ -1,7 +1,11 @@
 import { getCachedPublishedPosts, parsePostTags } from "@/lib/posts";
 import { PostCard } from "@/components/post-card";
+import { TrendingThisWeek } from "@/components/trending-this-week";
+import { TopicSpotlight } from "@/components/topic-spotlight";
+import { getCommunityInsights, getFallbackInsights } from "@/lib/community-insights";
 import { siteConfig } from "@/lib/config";
 import { Separator } from "@/components/ui/separator";
+
 export const dynamic = "force-dynamic";
 
 export const metadata = {
@@ -14,6 +18,12 @@ export const metadata = {
 export default async function Home() {
   const posts = await getCachedPublishedPosts();
   const recentPosts = posts.slice(0, 6);
+
+  // Load community insights — falls back to D1-only if KV is empty
+  let insights = await getCommunityInsights();
+  if (!insights) {
+    insights = await getFallbackInsights();
+  }
 
   return (
     <div className="mx-auto max-w-4xl px-4 sm:px-6 py-16">
@@ -43,6 +53,12 @@ export default async function Home() {
       </section>
 
       <Separator className="mb-12" />
+
+      {/* Trending — community-driven */}
+      <TrendingThisWeek insights={insights} />
+
+      {/* Topic Spotlight — community-driven */}
+      <TopicSpotlight insights={insights} />
 
       {/* Recent Posts */}
       <section>

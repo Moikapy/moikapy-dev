@@ -18,6 +18,16 @@ database_name = "moikapy-blog"
 database_id = "56e72ffd-263c-49e6-991a-bcd5a9df3670"
 migrations_dir = "drizzle"
 
+# KV namespace for community insights cache
+[[kv_namespaces]]
+binding = "COMMUNITY_INSIGHTS"
+id = "7afeb79a055b4290a9ccf88b94b2308a"
+preview_id = "4e95667285b043fea2ec49624f0fa4fe"
+
+# Cron triggers for community insights refresh
+[triggers]
+crons = ["*/30 * * * *"]
+
 # Secrets (set via `wrangler secret put`):
 #   ADMIN_PASSWORD_HASH  - SHA-256 hash of your admin password
 #   SESSION_SECRET       - Random hex string for signing session cookies

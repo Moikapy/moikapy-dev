@@ -10,6 +10,8 @@ import Link from "next/link";
 import { remark } from "remark";
 import html from "remark-html";
 import { ReactionBar } from "@/components/reaction-bar";
+import { RelatedPosts } from "@/components/related-posts";
+import { getCommunityInsights, getFallbackInsights } from "@/lib/community-insights";
 
 interface BlogPostPageProps {
   params: Promise<{ slug: string }>;
@@ -70,6 +72,12 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
   const tags = parsePostTags(post);
   const htmlContent = (await remark().use(html).process(post.content)).toString();
+
+  // Load community insights for related posts
+  let insights = await getCommunityInsights();
+  if (!insights) {
+    insights = await getFallbackInsights();
+  }
 
   return (
     <article className="mx-auto max-w-2xl px-4 sm:px-6 py-16">
@@ -151,6 +159,9 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         <h3 className="text-sm font-medium text-muted-foreground mb-3">How did this post make you feel?</h3>
         <ReactionBar slug={post.slug} />
       </div>
+
+      {/* Related posts — community-driven */}
+      <RelatedPosts slug={post.slug} insights={insights} />
     </article>
   );
 }

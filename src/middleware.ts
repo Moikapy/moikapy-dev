@@ -33,6 +33,11 @@ export async function middleware(request: NextRequest) {
 
   // AI routes require auth regardless of method
   if (request.nextUrl.pathname.startsWith("/api/ai/")) {
+    // Allow cron triggers with Cf-Auth-Token
+    const cronSecret = process.env.CRON_SECRET;
+    if (cronSecret && request.headers.get("Cf-Auth-Token") === cronSecret) {
+      return withSecurityHeaders(NextResponse.next());
+    }
     const authenticated = await isAuthenticated(request);
     if (!authenticated) {
       return withSecurityHeaders(
