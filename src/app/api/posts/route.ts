@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAllPublishedPosts, getAllPosts, createPost, parsePostTags } from "@/lib/posts";
+import { getCachedPublishedPosts, getAllPosts, createPost, parsePostTags } from "@/lib/posts";
 import { withPayment, isSiteInternalRequest } from "@/lib/x402-lite";
 import { logPaymentRequired } from "@/lib/analytics";
+import { validateSlug, validateTitle, validateExcerpt, validateContent, validateTags, validateCoverImage, sanitizeHtmlContent } from "@/lib/sanitize";
 
 export const dynamic = "force-dynamic";
 
@@ -23,7 +24,7 @@ function getPayToAddress(): string {
 async function handleGetInternal(request: NextRequest): Promise<NextResponse> {
   const showAll = request.nextUrl.searchParams.get("all") === "1";
   try {
-    const posts = showAll ? await getAllPosts() : await getAllPublishedPosts();
+    const posts = showAll ? await getAllPosts() : await getCachedPublishedPosts();
     return NextResponse.json(
       posts.map((p) => ({
         slug: p.slug,
@@ -46,7 +47,7 @@ async function handleGetInternal(request: NextRequest): Promise<NextResponse> {
 /** External (paid) handler — metadata only, no full content */
 async function handleGetPaid(request: NextRequest): Promise<NextResponse> {
   try {
-    const posts = await getAllPublishedPosts();
+    const posts = await getCachedPublishedPosts();
     return NextResponse.json(
       posts.map((p) => ({
         slug: p.slug,
@@ -88,15 +89,15 @@ export async function GET(request: NextRequest): Promise<NextResponse> {
 // POST /api/posts — create a new post (admin only, auth handled by middleware)
 export async function POST(request: NextRequest) {
   try {
-    const body: { slug: string; title: string; excerpt?: string; coverImage?: string; content: string; tags?: string[]; published?: boolean } = await request.json();
-    const { slug, title, excerpt, coverImage, content, tags, published } = body;
+    const body: { slug?: string; title?: string; excerpt?: string; coverImage?: string; content?: string; tags?: string[]; published?: boolean } = await request.json();
 
-    if (!slug || !title || !content) {
-      return NextResponse.json(
-        { error: "slug, title, and content are required" },
-        { status: 400 }
-      );
-    }
+    const slug = validateSlug(body.slug);
+    const title = validateTitle(body.title);
+    const excerpt = validateExcerpt(body.excerpt);
+    const content = sanitizeHtmlContent(validateContent(body.content));
+    const tags = validateTags(body.tags);
+    const coverImage = validateCoverImage(body.coverImage) ?? undefined;
+    const published = typeof body.published === "boolean" ? body.published : false;
 
     await createPost({ slug, title, excerpt, coverImage, content, tags, published });
     return NextResponse.json({ success: true, slug }, { status: 201 });
@@ -104,6 +105,10 @@ export async function POST(request: NextRequest) {
     if (err?.message?.includes("UNIQUE constraint")) {
       return NextResponse.json({ error: "A post with this slug already exists" }, { status: 409 });
     }
+    if (err?.message?.includes("must be")) {
+      return NextResponse.json({ error: err.message }, { status: 400 });
+    }
+    console.error("Failed to create post:", err);
     return NextResponse.json({ error: "Failed to create post" }, { status: 500 });
   }
 }

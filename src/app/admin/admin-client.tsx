@@ -377,7 +377,9 @@ export function AdminClient() {
           body: JSON.stringify(body),
         });
         if (!res.ok) {
-          alert("Failed to update post");
+          let msg = "Failed to update post";
+          try { const e = (await res.json()) as { error?: string; detail?: string }; if (e.error) msg = e.error; if (e.detail) msg += `: ${e.detail}`; } catch { /* ignore parse error */ }
+          alert(msg);
           return;
         }
       }

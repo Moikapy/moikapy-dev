@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "wiki_query",
+      "ctx_batch_execute"
+    ],
+    "deny": [],
+    "ask": [],
+    "denyPaths": [],
+    "additionalDirectories": []
+  }
+}

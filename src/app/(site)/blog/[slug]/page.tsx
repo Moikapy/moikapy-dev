@@ -1,10 +1,11 @@
 import { notFound } from "next/navigation";
-import { getPostBySlug, getAllPublishedPosts, parsePostTags } from "@/lib/posts";
+import { getPostBySlug, getAllPublishedPosts, getCachedPublishedPosts, parsePostTags } from "@/lib/posts";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { format } from "date-fns";
 import type { Metadata } from "next";
 import { siteConfig } from "@/lib/config";
+import { blogPostJsonLd, breadcrumbJsonLd } from "@/lib/jsonld";
 import Link from "next/link";
 import { remark } from "remark";
 import html from "remark-html";
@@ -15,6 +16,11 @@ interface BlogPostPageProps {
 }
 
 export const dynamic = "force-dynamic";
+
+export async function generateStaticParams() {
+  const posts = await getCachedPublishedPosts();
+  return posts.map((post) => ({ slug: post.slug }));
+}
 
 export async function generateMetadata({ params }: BlogPostPageProps): Promise<Metadata> {
   const { slug } = await params;
@@ -67,6 +73,34 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
 
   return (
     <article className="mx-auto max-w-2xl px-4 sm:px-6 py-16">
+      {/* JSON-LD for SEO and AI agents */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(blogPostJsonLd({
+            slug: post.slug,
+            title: post.title,
+            excerpt: post.excerpt,
+            content: post.content,
+            coverImage: post.coverImage,
+            createdAt: post.createdAt,
+            updatedAt: post.updatedAt,
+            tags,
+            readingTime: post.readingTime,
+          })),
+        }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(breadcrumbJsonLd([
+            { name: "Home", url: siteConfig.url },
+            { name: "Blog", url: `${siteConfig.url}/blog` },
+            { name: post.title, url: `${siteConfig.url}/blog/${post.slug}` },
+          ])),
+        }}
+      />
+
       <Link
         href="/blog"
         className="mb-8 inline-flex items-center text-sm text-muted-foreground transition-colors hover:text-foreground"

@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { ServiceWorkerRegistrar } from "@/components/sw-registrar";
 import { siteConfig } from "@/lib/config";
+import { websiteJsonLd, personJsonLd } from "@/lib/jsonld";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -46,6 +47,10 @@ export const metadata: Metadata = {
     statusBarStyle: "default",
     title: siteConfig.name,
   },
+  other: {
+    // AI agent discoverability
+    "llms-txt": "/llms.txt",
+  },
 };
 
 export default function RootLayout({
@@ -55,6 +60,17 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" className="dark">
+      <head>
+        {/* Global JSON-LD for web site and person schema */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd()) }}
+        />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(personJsonLd()) }}
+        />
+      </head>
       <body className={`${inter.className} min-h-screen bg-background text-foreground antialiased`}>
         {children}
         <ServiceWorkerRegistrar />

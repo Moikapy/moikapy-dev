@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { rateLimit } from "@/lib/rate-limit";
 
 export const dynamic = "force-dynamic";
 
 const SKIP_PREFIXES = ["/admin", "/api/", "/_next/", "/favicon"];
 const SKIP_SUFFIXES = [".ico", ".png", ".jpg", ".svg", ".webmanifest", ".xml", ".css", ".js"];
+const MAX_PATH_LENGTH = 500;
+const MAX_REFERER_LENGTH = 2000;
 
 function normalizeReferer(ref: string): string {
   if (!ref) return "direct";
@@ -18,13 +21,16 @@ function normalizeReferer(ref: string): string {
 }
 
 function shouldSkip(path: string): boolean {
-  if (path.length > 500) return true;
+  if (path.length > MAX_PATH_LENGTH) return true;
   if (SKIP_PREFIXES.some((p) => path.startsWith(p))) return true;
   if (SKIP_SUFFIXES.some((s) => path.endsWith(s))) return true;
   return false;
 }
 
 export async function POST(request: NextRequest) {
+  const rateLimitResponse = rateLimit(request, { max: 60, windowSeconds: 60, prefix: "track" });
+  if (rateLimitResponse) return rateLimitResponse;
+
   try {
     const body = (await request.json()) as { path?: string; ref?: string };
     const path: string | undefined = body.path;
@@ -32,12 +38,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "Missing path" }, { status: 400 });
     }
 
-    const cleanPath = path.split("?")[0].replace(/\/+$/, "") || "/";
+    // Sanitize path
+    const cleanPath = path.split("?")[0].replace(/\/+$/, "").slice(0, MAX_PATH_LENGTH) || "/";
     if (shouldSkip(cleanPath)) {
       return NextResponse.json({ ok: true });
     }
 
-    const referer = normalizeReferer(body.ref || "");
+    // Sanitize referrer
+    const rawRef = typeof body.ref === "string" ? body.ref.slice(0, MAX_REFERER_LENGTH) : "";
+    const referer = normalizeReferer(rawRef);
     const today = new Date().toISOString().split("T")[0];
 
     const { env } = getCloudflareContext();
@@ -46,25 +55,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
-    // Fire and forget — don't block the response
-    const pageViewPromise = db
-      .prepare(
-        `INSERT INTO page_views (path, date, views) VALUES (?, ?, 1)
-         ON CONFLICT(path, date) DO UPDATE SET views = views + 1`
-      )
-      .bind(cleanPath, today)
-      .run();
-
-    const referrerPromise = db
-      .prepare(
-        `INSERT INTO page_referrers (referer, path, date, views) VALUES (?, ?, ?, 1)
-         ON CONFLICT(referer, path, date) DO UPDATE SET views = views + 1`
-      )
-      .bind(referer, cleanPath, today)
-      .run();
-
-    // Wait for both but don't let errors block
-    await Promise.allSettled([pageViewPromise, referrerPromise]);
+    // Batch both writes into a single D1 round-trip
+    await db.batch([
+      db
+        .prepare(
+          `INSERT INTO page_views (path, date, views) VALUES (?, ?, 1)
+           ON CONFLICT(path, date) DO UPDATE SET views = views + 1`
+        )
+        .bind(cleanPath, today),
+      db
+        .prepare(
+          `INSERT INTO page_referrers (referer, path, date, views) VALUES (?, ?, ?, 1)
+           ON CONFLICT(referer, path, date) DO UPDATE SET views = views + 1`
+        )
+        .bind(referer, cleanPath, today),
+    ]);
 
     return NextResponse.json({ ok: true });
   } catch (err) {

@@ -5,7 +5,19 @@
 
 ## Overview
 
-This site exposes a **paid API** using the **x402 payment protocol** (HTTP 402). Agents can programmatically discover, query, and pay for access to structured blog content — no API keys, no accounts, no OAuth. Just USDC on Base.
+This site exposes a **paid API** using the **x402 payment protocol v2** (HTTP 402). Agents can programmatically discover, query, and pay for access to structured blog content — no API keys, no accounts, no OAuth. Just USDC on Base.
+
+## Agent Discovery
+
+Agents can discover this API through multiple well-known paths:
+
+| Path | Purpose | Format |
+|------|---------|--------|
+| `/llms.txt` | Discovery index for AI crawlers | Text |
+| `/SKILL.md` | Full integration guide (this file) | Markdown |
+| `/feed/llms-full.txt` | All published content as plain text | Text |
+| `/.well-known/ai-plugin.json` | Plugin manifest for ChatGPT/Claude | JSON |
+| `/api` | Self-describing API with full pricing | JSON |
 
 ## Quick Start
 
@@ -15,7 +27,7 @@ This site exposes a **paid API** using the **x402 payment protocol** (HTTP 402).
 GET https://moikapy.dev/api
 ```
 
-Returns full API documentation, pricing, and payment instructions as JSON.
+Returns full API documentation, pricing, and Bazaar resource schema as JSON.
 
 ### 2. Free: Browse the blog (HTML)
 
@@ -26,15 +38,23 @@ The blog is free to read in a browser:
 - `https://moikapy.dev/feed/rss.xml` — RSS feed
 - `https://moikapy.dev` — homepage
 
-### 3. Paid: Query the API (x402)
+### 3. Free: Get all content as text (for AI training/RAG)
 
-External API access requires payment per request. The protocol is x402:
+```
+GET https://moikapy.dev/feed/llms-full.txt
+```
+
+Returns all published posts as plain text with metadata. Cache-friendly (`s-maxage=300`).
+
+### 4. Paid: Query the API (x402)
+
+External API access requires payment per request. The protocol is x402 v2:
 
 1. Make a `GET` request to a paid endpoint
 2. Receive a `402 Payment Required` response with `PAYMENT-REQUIRED` header
 3. Construct a USDC payment on Base (chain ID 8453)
 4. Retry the request with the `PAYMENT-SIGNATURE` header
-5. Receive the response data + `PAYMENT-RESPONSE` settlement confirmation
+5. Receive the response data + `PAYMENT-RESPONSE` and `EXTENSION-RESPONSES` headers
 
 ## Endpoints
 
@@ -45,8 +65,8 @@ External API access requires payment per request. The protocol is x402:
 Search the knowledge base by keywords or tags. Returns relevance-scored results.
 
 **Parameters:**
-- `q` — Search query (space-separated terms, e.g. `RAG pipeline fine-tuning`)
-- `tag` — Filter by tag name (e.g. `ai-engineering`, `gaming`)
+- `q` — Search query (space-separated terms, max 200 chars, max 10 terms)
+- `tag` — Filter by tag name (max 100 chars)
 - `limit` — Max results (default: 10, max: 50)
 
 **Example request (without payment):**
@@ -72,11 +92,29 @@ curl -s "https://moikapy.dev/api/knowledge?q=RAG+pipeline&limit=5"
     "payTo": "<wallet_address>",
     "maxTimeoutSeconds": 60,
     "extra": { "name": "USDC", "version": "2" }
+  }],
+  "extensions": [{
+    "bazaar": {
+      "discoverable": true,
+      "metadata": {
+        "name": "Search moikapy's knowledge base — AI engineering, gaming, 3D printing",
+        "description": "Search moikapy's knowledge base — AI engineering, gaming, 3D printing",
+        "tags": ["ai-engineering", "gaming", "3d-printing", "knowledge-base"]
+      }
+    }
   }]
 }
 ```
 
 **Example response (after payment):**
+
+The `EXTENSION-RESPONSES` header will contain a base64-encoded JSON confirming Bazaar cataloging:
+```
+EXTENSION-RESPONSES: eyJiYXphYXIiOnsic3RhdHVzIjoic3VjY2VzcyJ9fQ==
+```
+
+Decoded: `{"bazaar":{"status":"success"}}`
+
 ```json
 {
   "query": "rag pipeline",
@@ -118,17 +156,41 @@ Get a single post by slug. Full content for internal requests, metadata + excerp
 
 **Price:** Free
 
-Returns this documentation as JSON, including pricing, network details, and SDK references.
+Returns self-describing API documentation as JSON, including Bazaar resource schema, pricing, network details, and SDK references. Includes `x402Version: 2`, `resources` array with `accepts` payment requirements, and `bazaar` discovery URL.
+
+## Bazaar Discovery
+
+This API is discoverable through two x402 marketplaces:
+
+1. **[x402 Bazaar](https://x402bazaar.org)** (live now) — 112+ APIs, CLI (`npm i -g x402-bazaar`), MCP server for Claude/Cursor. Multi-chain (Base + SKALE + Polygon), 95/5 revenue split. List your API at https://x402bazaar.org/services.
+
+2. **Coinbase Bazaar** (`bazaar.x402.org`, early access) — The official x402 discovery layer from Coinbase. Auto-catalogs services from 402 responses with `extensions.bazaar`. Currently in early development.
+
+- `discoverable: true` — signals that this service wants to be listed
+- `metadata.name` — human-readable service name
+- `metadata.description` — what the service does
+- `metadata.tags` — categories for search and filtering
+
+Agents can discover this API by querying the Bazaar:
+```typescript
+import { HTTPFacilitatorClient } from "@x402/core/http";
+import { withBazaar } from "@x402/extensions";
+
+const client = withBazaar(new HTTPFacilitatorClient({ url: "https://x402.org/facilitator" }));
+const services = await client.extensions.discovery.listResources({ type: "http" });
+```
 
 ## Payment Details
 
 | Field | Value |
 |-------|-------|
-| Protocol | x402 (HTTP 402) |
+| Protocol | x402 v2 (HTTP 402 Payment Required) |
 | Network | Base (Ethereum L2) |
 | Chain ID | 8453 |
+| Network ID | eip155:8453 |
 | Token | USDC (`0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`) |
 | Settlement | Coinbase-hosted facilitator |
+| Facilitator | https://facilitator.x402.org |
 | Free tier | None (internal requests from moikapy.dev are free) |
 
 ### SDK Integration
@@ -192,11 +254,7 @@ Common tags used in posts: `ai-engineering`, `rag`, `llm`, `agents`, `gaming`, `
 
 ## Rate Limits
 
-No explicit rate limits. Abuse will result in IP-level blocking. Be reasonable — cache responses when possible.
-
-## Bazaar
-
-This API is listed on the [x402 Bazaar](https://bazaar.x402.org) for agent discovery.
+60 requests/minute for analytics tracking, 30/minute for reactions. No explicit rate limit on paid endpoints (payment is the gate). Cache responses when possible.
 
 ## Token
 
@@ -219,4 +277,4 @@ This API is listed on the [x402 Bazaar](https://bazaar.x402.org) for agent disco
 
 ---
 
-*Built with x402. Monetize your knowledge — no middlemen required.* 🐉
+*Built with x402 v2. Monetize your knowledge — no middlemen required.* 🐉

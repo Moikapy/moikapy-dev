@@ -36,6 +36,20 @@
       "when": 1700000400000,
       "tag": "0004_add_page_referrers",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": 6,
+      "when": 1700000500000,
+      "tag": "0005_add_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": 6,
+      "when": 1700000600000,
+      "tag": "0006_normalize_tags",
+      "breakpoints": true
     }
   ]
 }

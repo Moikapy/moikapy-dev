@@ -16,6 +16,9 @@
 - (to be discovered)
 
 ## Key Files
+- `src/db/connection.ts`
+- `src/db/index.ts`
+- `src/db/local.ts`
 - `src/db/schema.ts`
 
 ## Design Decisions

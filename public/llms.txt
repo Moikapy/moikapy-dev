@@ -2,22 +2,34 @@
 
 > AI engineer, gamer, 3D printing. Blog about AI engineering, gaming, building cool stuff.
 
-## Paid API
+## Paid API (x402 Protocol, USDC on Base)
 
-- /api/knowledge?q=... — Search knowledge base ($0.02, x402/USDC on Base)
-- /api/posts — List posts ($0.01, x402/USDC on Base, free from own site)
-- /api — Full API docs (free)
+- /api/knowledge?q=... — Search knowledge base ($0.02/request)
+- /api/posts — List posts ($0.01/request, free from own site)
+- /api — Self-describing API with full pricing and SDK references
+
+All paid endpoints use the x402 HTTP 402 protocol. No API keys required. Pay per request with USDC on Base (chain 8453).
 
 ## Free Content
 
 - /blog — Blog listing
-- /blog/{slug} — Individual posts
+- /blog/{slug} — Individual posts with full content
 - /feed/rss.xml — RSS feed
-- /SKILL.md — Full agent & API guide
+- /feed/llms-full.txt — All published content as plain text
+- /SKILL.md — Full agent & API integration guide
+
+## AI Agent Discovery
+
+- /.well-known/ai-plugin.json — Plugin manifest for ChatGPT/Claude
+- x402Version: 2
+- facilitator: https://facilitator.x402.org
+- bazaar: https://x402bazaar.org — Live marketplace for agent discovery (112+ APIs)
 
 ## Payment
 
-x402 protocol. USDC on Base (chain 8453). See /api for details.
+x402 protocol. USDC on Base (eip155:8453).
+Facilitator: https://facilitator.x402.org
+See /api for full pricing, SDK references, and Bazaar resource schema.
 
 ## Token
 

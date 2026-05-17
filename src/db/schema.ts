@@ -34,6 +34,12 @@ export const pageReferrers = sqliteTable("page_referrers", {
   views: integer("views").notNull().default(0),
 });
 
+export const postTags = sqliteTable("post_tags", {
+  slug: text("slug").notNull().references(() => posts.slug, { onDelete: "cascade" }),
+  tag: text("tag").notNull(),
+});
+
 export type Post = typeof posts.$inferSelect;
 export type NewPost = typeof posts.$inferInsert;
 export type Reaction = typeof reactions.$inferSelect;
+export type PostTag = typeof postTags.$inferSelect;

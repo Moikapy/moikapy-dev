@@ -39,6 +39,48 @@ export function getLocalDb() {
       created_at TEXT NOT NULL,
       updated_at TEXT NOT NULL
     );
+
+    CREATE TABLE IF NOT EXISTS reactions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      post_slug TEXT NOT NULL,
+      emoji TEXT NOT NULL,
+      visitor_hash TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(post_slug, emoji, visitor_hash)
+    );
+
+    CREATE TABLE IF NOT EXISTS page_views (
+      path TEXT NOT NULL,
+      date TEXT NOT NULL,
+      views INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (path, date)
+    );
+
+    CREATE TABLE IF NOT EXISTS page_referrers (
+      referer TEXT NOT NULL,
+      path TEXT NOT NULL,
+      date TEXT NOT NULL,
+      views INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (referer, path, date)
+    );
+
+    CREATE TABLE IF NOT EXISTS post_tags (
+      slug TEXT NOT NULL REFERENCES posts(slug) ON DELETE CASCADE,
+      tag TEXT NOT NULL,
+      PRIMARY KEY (slug, tag)
+    );
+  `);
+
+  // Indexes for performance
+  sqlite.exec(`
+    CREATE INDEX IF NOT EXISTS idx_reactions_post_slug ON reactions(post_slug);
+    CREATE INDEX IF NOT EXISTS idx_reactions_visitor_hash ON reactions(visitor_hash);
+    CREATE INDEX IF NOT EXISTS idx_page_views_date ON page_views(date);
+    CREATE INDEX IF NOT EXISTS idx_page_views_path ON page_views(path);
+    CREATE INDEX IF NOT EXISTS idx_page_referrers_date ON page_referrers(date);
+    CREATE INDEX IF NOT EXISTS idx_page_referrers_referer ON page_referrers(referer);
+    CREATE INDEX IF NOT EXISTS idx_page_referrers_date_path ON page_referrers(date, path);
+    CREATE INDEX IF NOT EXISTS idx_post_tags_tag ON post_tags(tag);
   `);
 
   // Seed the hello-world post if table is empty
@@ -66,6 +108,12 @@ Stay tuned — more posts coming soon.',
         '2026-04-08T00:00:00.000Z',
         '2026-04-08T00:00:00.000Z'
       );
+    `);
+
+    // Seed tags for hello-world
+    sqlite.exec(`
+      INSERT INTO post_tags (slug, tag) VALUES ('hello-world', 'meta');
+      INSERT INTO post_tags (slug, tag) VALUES ('hello-world', 'intro');
     `);
   }
 

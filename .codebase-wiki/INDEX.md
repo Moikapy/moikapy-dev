@@ -13,6 +13,7 @@
 - [[format-route]] — AI format endpoint at /api/ai/format that reformats voice-dictated text into clean Markdown. Uses GLM-5.1:cloud with think:false (eliminates chain-of-thought overhead), num_predict:8192, and continuation loop (up to 4 rounds) that detects truncated output via looksTruncated() heuristic and sends "continue" messages. Single-request approach (no chunking) for up to 8000 chars. System prompt explicitly requires preserving ALL sentences to prevent summarization.
 - [[public]] — public module in the codebase
 - [[scripts]] — scripts module in the codebase
+- [[seo-agent-discoverability]] — SEO and AI agent discoverability module. JSON-LD structured data (WebSite, Person, BlogPosting, BreadcrumbList) via src/lib/jsonld.ts, llms-full.txt dynamic endpoint, per-post generateStaticParams, OpenGraph metadata, security headers in middleware, and cached data fetching.
 - [[src-db]] — Database layer using Drizzle ORM with D1 (SQLite). Schema includes: posts (slug, title, content, tags as JSON, published flag), reactions (emoji reactions per post by visitor hash), page_views (path+date composite key, view counts), page_referrers (referer domain+path+date, view counts). Migrations in drizzle/ directory. See [[analytics-api]] for how page_views and page_referrers are used.
 - [[src-app]] — src/app module in the codebase
 - [[src-components]] — src/components module in the codebase
@@ -38,4 +39,4 @@
 
 ---
 
-*Last updated: 2026-04-14 • 27 pages total*
+*Last updated: 2026-05-17 • 30 pages total*

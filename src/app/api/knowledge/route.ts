@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getAllPublishedPosts, parsePostTags } from "@/lib/posts";
+import { getCachedPublishedPosts, parsePostTags } from "@/lib/posts";
 import { withPayment, isSiteInternalRequest } from "@/lib/x402-lite";
 import { logPaymentRequired } from "@/lib/analytics";
 
@@ -21,9 +21,9 @@ function getPayToAddress(): string {
 
 async function knowledgeHandler(request: NextRequest): Promise<NextResponse> {
   const { searchParams } = new URL(request.url);
-  const query = searchParams.get("q")?.toLowerCase().trim();
-  const tag = searchParams.get("tag")?.toLowerCase().trim();
-  const limit = Math.min(parseInt(searchParams.get("limit") ?? "10", 10), 50);
+  const query = searchParams.get("q")?.toLowerCase().trim().slice(0, 200);
+  const tag = searchParams.get("tag")?.toLowerCase().trim().slice(0, 100);
+  const limit = Math.min(Math.max(parseInt(searchParams.get("limit") ?? "10") || 10, 1), 50);
 
   if (!query && !tag) {
     return NextResponse.json(
@@ -40,7 +40,11 @@ async function knowledgeHandler(request: NextRequest): Promise<NextResponse> {
     );
   }
 
-  const allPosts = await getAllPublishedPosts();
+  // Use cached posts — avoids hitting D1 on every search
+  const allPosts = await getCachedPublishedPosts();
+
+  // Limit search terms to prevent abuse
+  const terms = query ? query.split(/\s+/).filter(Boolean).slice(0, 10) : [];
 
   const scored = allPosts.map((post) => {
     const title = post.title.toLowerCase();
@@ -50,14 +54,11 @@ async function knowledgeHandler(request: NextRequest): Promise<NextResponse> {
 
     let score = 0;
 
-    if (query) {
-      const terms = query.split(/\s+/).filter(Boolean);
-      for (const term of terms) {
-        if (title.includes(term)) score += 10;
-        if (excerpt.includes(term)) score += 5;
-        if (content.includes(term)) score += 2;
-        if (tags.some((t) => t.includes(term))) score += 8;
-      }
+    for (const term of terms) {
+      if (title.includes(term)) score += 10;
+      if (excerpt.includes(term)) score += 5;
+      if (content.includes(term)) score += 2;
+      if (tags.some((t) => t.includes(term))) score += 8;
     }
 
     if (tag) {

@@ -1,12 +1,18 @@
-import { getAllPublishedPosts, parsePostTags } from "@/lib/posts";
+import { getCachedPublishedPosts, parsePostTags } from "@/lib/posts";
 import { PostCard } from "@/components/post-card";
 import { siteConfig } from "@/lib/config";
 import { Separator } from "@/components/ui/separator";
-
 export const dynamic = "force-dynamic";
 
+export const metadata = {
+  title: {
+    absolute: siteConfig.title,
+  },
+  description: siteConfig.description,
+};
+
 export default async function Home() {
-  const posts = await getAllPublishedPosts();
+  const posts = await getCachedPublishedPosts();
   const recentPosts = posts.slice(0, 6);
 
   return (

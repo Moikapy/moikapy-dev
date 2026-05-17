@@ -1,10 +1,10 @@
 /**
- * Simple server-side analytics for tracking key events.
+ * Server-side analytics for tracking key events.
  * Uses Cloudflare Workers Analytics (via console.log + CF analytics)
  * and logs to D1 for querying.
  */
 
-import { getDb } from "@/lib/posts";
+import { getDb } from "@/db/connection";
 
 // Event types we track
 export type AnalyticsEvent =

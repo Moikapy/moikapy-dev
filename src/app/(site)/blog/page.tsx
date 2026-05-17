@@ -1,21 +1,38 @@
+import { getCachedPublishedPosts, parsePostTags, getCachedTags } from "@/lib/posts";
 import { PostCard } from "@/components/post-card";
-import { getAllPublishedPosts, parsePostTags, getAllTags } from "@/lib/posts";
+import { siteConfig } from "@/lib/config";
+import { breadcrumbJsonLd } from "@/lib/jsonld";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
+import type { Metadata } from "next";
 
 export const dynamic = "force-dynamic";
 
-export const metadata = {
+export const metadata: Metadata = {
   title: "Blog",
   description: "All posts by moikapy — AI engineering, gaming, and building cool stuff.",
+  alternates: {
+    canonical: `${siteConfig.url}/blog`,
+  },
 };
 
 export default async function BlogPage() {
-  const posts = await getAllPublishedPosts();
-  const tags = await getAllTags();
+  const posts = await getCachedPublishedPosts();
+  const tags = await getCachedTags();
 
   return (
     <div className="mx-auto max-w-4xl px-4 sm:px-6 py-16">
+      {/* JSON-LD Breadcrumb */}
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(breadcrumbJsonLd([
+            { name: "Home", url: siteConfig.url },
+            { name: "Blog", url: `${siteConfig.url}/blog` },
+          ])),
+        }}
+      />
+
       <h1 className="text-3xl font-bold tracking-tight">Blog</h1>
       <p className="mt-2 text-muted-foreground">
         Writing about AI engineering, gaming, and the projects I&apos;m building.

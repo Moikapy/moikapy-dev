@@ -1,8 +1,7 @@
 import { eq, desc } from "drizzle-orm";
-import { posts, type Post } from "@/db/schema";
-import { createDb } from "@/db";
-import { getLocalDb } from "@/db/local";
-import { getCloudflareContext } from "@opennextjs/cloudflare";
+import { posts, postTags, type Post } from "@/db/schema";
+import { getDb } from "@/db/connection";
+import { unstable_cache } from "next/cache";
 
 export type { Post };
 
@@ -14,34 +13,6 @@ function estimateReadingTime(content: string): string {
   const words = content.split(/\s+/).length;
   const minutes = Math.ceil(words / 200);
   return `${minutes} min read`;
-}
-
-export function isLocalDev(): boolean {
-  try {
-    const ctx = getCloudflareContext();
-    return !("DB" in ctx.env && ctx.env.DB);
-  } catch {
-    return true;
-  }
-}
-
-/**
- * Returns a Drizzle query builder.
- * - Production: Cloudflare D1 (via cloudflare context)
- * - Local dev: better-sqlite3 (stored in .local/dev.db)
- */
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export function getDb(): any {
-  try {
-    const ctx = getCloudflareContext();
-    const d1 = ctx.env.DB as D1Database | undefined;
-    if (d1) {
-      return createDb(d1);
-    }
-  } catch {
-    // Not running in Cloudflare — fall through to local
-  }
-  return getLocalDb();
 }
 
 function parseTags(tagsJson: string): string[] {
@@ -105,6 +76,13 @@ export async function createPost(data: {
     createdAt: now,
     updatedAt: now,
   });
+
+  // Insert tags into junction table
+  if (data.tags && data.tags.length > 0) {
+    await db.insert(postTags).values(
+      data.tags.map((tag) => ({ slug: data.slug, tag }))
+    );
+  }
 }
 
 export async function updatePost(
@@ -112,7 +90,7 @@ export async function updatePost(
   data: {
     title?: string;
     excerpt?: string;
-    coverImage?: string;
+    coverImage?: string | null;
     content?: string;
     tags?: string[];
     published?: boolean;
@@ -120,34 +98,88 @@ export async function updatePost(
 ) {
   const db = getDb();
   const { tags: rawTags, ...restData } = data;
+
+  // Strip undefined values — Drizzle .set() should skip them,
+  // but explicit filtering prevents edge-case crashes
+  const definedUpdates = Object.fromEntries(
+    Object.entries(restData).filter(([, v]) => v !== undefined)
+  );
+
   await db
     .update(posts)
     .set({
-      ...restData,
+      ...definedUpdates,
       ...(rawTags !== undefined ? { tags: JSON.stringify(rawTags) } : {}),
       updatedAt: new Date().toISOString(),
     })
     .where(eq(posts.slug, slug));
+
+  // Update junction table if tags provided
+  if (rawTags !== undefined) {
+    await db.delete(postTags).where(eq(postTags.slug, slug));
+    if (rawTags.length > 0) {
+      await db.insert(postTags).values(
+        rawTags.map((tag) => ({ slug, tag }))
+      );
+    }
+  }
 }
 
 export async function deletePost(slug: string) {
   const db = getDb();
+  // junction table cascades on delete
   await db.delete(posts).where(eq(posts.slug, slug));
 }
 
 export async function getAllTags(): Promise<string[]> {
-  const allPosts = await getAllPublishedPosts();
-  const tagSet = new Set<string>();
-  allPosts.forEach((post) => parseTags(post.tags).forEach((tag) => tagSet.add(tag)));
+  const db = getDb();
+  // Prefer junction table for accurate tag counts
+  const result = await db
+    .select({ tag: postTags.tag })
+    .from(postTags)
+    .innerJoin(posts, eq(postTags.slug, posts.slug))
+    .where(eq(posts.published, true));
+
+  const tagSet = new Set(result.map((r) => r.tag));
   return Array.from(tagSet).sort();
 }
 
 export async function getPostsByTag(tag: string): Promise<PostWithReadingTime[]> {
-  const allPosts = await getAllPublishedPosts();
-  return allPosts.filter((post) => parseTags(post.tags).some((t) => t.toLowerCase() === tag.toLowerCase()));
+  const db = getDb();
+  const matchingSlugs = await db
+    .select({ slug: postTags.slug })
+    .from(postTags)
+    .where(eq(postTags.tag, tag));
+
+  if (matchingSlugs.length === 0) return [];
+
+  const result = await db
+    .select()
+    .from(posts)
+    .where(eq(posts.published, true))
+    .orderBy(desc(posts.createdAt));
+
+  const slugSet = new Set(matchingSlugs.map((r) => r.slug));
+  return result
+    .filter((post) => slugSet.has(post.slug))
+    .map(withReadingTime);
 }
 
-// Helper to parse tags JSON field
+// ── Cached versions for public-facing reads ──────────────────────
+
+export const getCachedPublishedPosts = unstable_cache(
+  getAllPublishedPosts,
+  ["published-posts"],
+  { revalidate: 300 }
+);
+
+export const getCachedTags = unstable_cache(
+  getAllTags,
+  ["all-tags"],
+  { revalidate: 300 }
+);
+
+// Helper to parse tags JSON field (backward compat)
 export function parsePostTags(post: Post): string[] {
   return parseTags(post.tags);
 }

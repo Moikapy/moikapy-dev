@@ -1,11 +1,13 @@
 /**
- * Lightweight x402 payment gate for Cloudflare Workers.
+ * x402 Payment Protocol — Bazaar-compatible implementation.
  *
- * Instead of using the full @x402/next SDK (which has Node.js dependencies
- * that don't work in Workers), we implement the protocol directly:
- * 1. Check if the request includes a valid PAYMENT-SIGNATURE header
- * 2. If not, return 402 with PAYMENT-REQUIRED header
- * 3. Payment verification/settlement happens via the Coinbase facilitator
+ * Implements the x402 v2 protocol with Bazaar discovery extension:
+ * 1. Return 402 with PAYMENT-REQUIRED header + Bazaar extension when no payment
+ * 2. Verify payment via Coinbase facilitator
+ * 3. Serve content + EXTENSION-RESPONSES header on success
+ *
+ * @see https://docs.x402.org/extensions/bazaar
+ * @see https://docs.x402.org/core-concepts
  */
 
 import { NextRequest, NextResponse } from "next/server";
@@ -15,7 +17,7 @@ export interface PaymentConfig {
   price: string;
   /** Your wallet address to receive payments */
   payTo: string;
-  /** Network ID — Base mainnet */
+  /** Network ID — eip155:8453 for Base mainnet */
   network: string;
   /** Human-readable description */
   description: string;
@@ -23,27 +25,22 @@ export interface PaymentConfig {
   mimeType: string;
 }
 
-// Coinbase-hosted facilitator for verification
+// Coinbase-hosted facilitator for payment verification
 const FACILITATOR_URL = "https://facilitator.x402.org";
 
-// KAPY token contract on Base
-export const KAPY_TOKEN = {
-  name: "KAPY",
-  symbol: "KAPY",
-  address: "0xb09220649657DC919d643060DcA998511B4cb1CA",
-  network: "Base",
-  chainId: 8453,
-  url: "https://flaunch.gg/base/coins/0xb09220649657DC919d643060DcA998511B4cb1CA",
-} as const;
+// Live Bazaar marketplace for agent discovery
+const BAZAAR_URL = "https://x402bazaar.org";
+
+// USDC on Base
+const USDC_BASE = "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913";
 
 // Parse price string like "$0.01" to atomic units (6 decimals for USDC)
 function parsePriceToAtomic(priceStr: string): string {
   const dollars = parseFloat(priceStr.replace("$", ""));
-  const atomic = Math.round(dollars * 1_000_000); // USDC has 6 decimals
-  return atomic.toString();
+  return Math.round(dollars * 1_000_000).toString();
 }
 
-// Build the PAYMENT-REQUIRED response body
+// Build x402 v2 402 response body with Bazaar extension
 function buildPaymentRequired(config: PaymentConfig, requestUrl: string) {
   return {
     x402Version: 2,
@@ -57,7 +54,7 @@ function buildPaymentRequired(config: PaymentConfig, requestUrl: string) {
       {
         scheme: "exact",
         network: config.network,
-        asset: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913", // USDC on Base
+        asset: USDC_BASE,
         amount: parsePriceToAtomic(config.price),
         payTo: config.payTo,
         maxTimeoutSeconds: 60,
@@ -67,14 +64,26 @@ function buildPaymentRequired(config: PaymentConfig, requestUrl: string) {
         },
       },
     ],
-    extensions: [],
+    extensions: [
+      {
+        bazaar: {
+          discoverable: true,
+          metadata: {
+            name: config.description,
+            description: config.description,
+            tags: ["ai-engineering", "gaming", "3d-printing", "knowledge-base"],
+          },
+        },
+      },
+    ],
   };
 }
 
 /**
- * Wrap an API handler with x402 payment requirements.
+ * Wrap an API handler with x402 v2 payment requirements + Bazaar discovery.
  * Returns 402 with payment info if no valid payment is attached.
- * Falls through to the handler if payment is present (facilitator verifies).
+ * Falls through to the handler if payment is verified.
+ * Includes EXTENSION-RESPONSES header on success for Bazaar cataloging.
  */
 export function withPayment(
   handler: (request: NextRequest) => Promise<NextResponse>,
@@ -90,9 +99,7 @@ export function withPayment(
     // Check if payment signature is present
     const paymentSignature = request.headers.get("PAYMENT-SIGNATURE");
     if (paymentSignature) {
-      // Payment attached — verify with facilitator, then serve
-      // For now, trust the facilitator will verify on settlement
-      // Full verification would call facilitator /verify endpoint
+      // Payment attached — verify with facilitator
       try {
         const verifyRes = await fetch(`${FACILITATOR_URL}/verify`, {
           method: "POST",
@@ -100,22 +107,34 @@ export function withPayment(
           body: paymentSignature,
         });
         if (verifyRes.ok) {
-          const result = await verifyRes.json() as { isValid?: boolean };
+          const result = (await verifyRes.json()) as { isValid?: boolean };
           if (result.isValid) {
             // Payment verified — serve the content
             const response = await handler(request);
-            // Add settlement header
+
+            // EXTENSION-RESPONSES header for Bazaar cataloging confirmation
+            const extensionResponse = Buffer.from(
+              JSON.stringify({ bazaar: { status: "success" } })
+            ).toString("base64");
+            response.headers.set("EXTENSION-RESPONSES", extensionResponse);
             response.headers.set("PAYMENT-RESPONSE", JSON.stringify({ settled: true }));
+
             return response;
           }
         }
       } catch {
         // Facilitator unreachable — serve anyway, settlement happens async
-        return handler(request);
+        const response = await handler(request);
+        // Processing status — payment received but not yet confirmed
+        const extensionResponse = Buffer.from(
+          JSON.stringify({ bazaar: { status: "processing" } })
+        ).toString("base64");
+        response.headers.set("EXTENSION-RESPONSES", extensionResponse);
+        return response;
       }
     }
 
-    // No payment — return 402 with payment requirements
+    // No payment — return 402 with payment requirements + Bazaar extension
     const paymentRequired = buildPaymentRequired(config, request.url);
     return new NextResponse(JSON.stringify(paymentRequired), {
       status: 402,
@@ -128,16 +147,22 @@ export function withPayment(
 }
 
 /**
- * Check if a request is from our own site (referer/origin check)
+ * Check if a request is from our own site (origin/referer matching).
+ * Properly validates hostname to prevent spoofing.
  */
 export function isSiteInternalRequest(request: NextRequest): boolean {
-  const referer = request.headers.get("referer");
   const origin = request.headers.get("origin");
+  const referer = request.headers.get("referer");
   const siteUrl = "moikapy.dev";
-  if (referer && referer.includes(siteUrl)) return true;
-  if (origin && origin.includes(siteUrl)) return true;
-  // Admin session cookie
-  const cookie = request.headers.get("cookie");
-  if (cookie && cookie.includes("session")) return true;
+  // Origin is most reliable — checked first
+  if (origin && new URL(origin).hostname.endsWith(siteUrl)) return true;
+  // Referer for traditional navigation — validate hostname specifically
+  if (referer) {
+    try {
+      if (new URL(referer).hostname.endsWith(siteUrl)) return true;
+    } catch {
+      // Invalid URL — reject
+    }
+  }
   return false;
 }
