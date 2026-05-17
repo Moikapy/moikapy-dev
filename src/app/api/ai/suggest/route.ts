@@ -1,16 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { callOrigen } from "@moikapy/origen";
+import { blogConfig } from "@/lib/origen";
 
-const OLLAMA_API_URL = "https://ollama.com/api/chat";
-
-function getOllamaApiKey(): string | undefined {
-  try {
-    const { getCloudflareContext } = require("@opennextjs/cloudflare");
-    const ctx = getCloudflareContext();
-    return ctx.env?.OLLAMA_API_KEY as string | undefined;
-  } catch {
-    return process.env.OLLAMA_API_KEY;
-  }
-}
+export const dynamic = "force-dynamic";
 
 interface SuggestRequest {
   content: string;
@@ -18,11 +10,6 @@ interface SuggestRequest {
 }
 
 export async function POST(request: NextRequest) {
-  const apiKey = getOllamaApiKey();
-  if (!apiKey) {
-    return NextResponse.json({ error: "Ollama API key not configured" }, { status: 500 });
-  }
-
   let body: SuggestRequest;
   try {
     body = await request.json();
@@ -35,7 +22,6 @@ export async function POST(request: NextRequest) {
   }
 
   const contentPreview = body.content.slice(0, 3000);
-
   const existingTitle = body.title?.trim() || "";
 
   const systemPrompt = `You are a blog post assistant. Given blog post content, suggest a concise title, a URL-friendly slug, and a short excerpt. Always respond with valid JSON only — no markdown, no explanation.
@@ -53,33 +39,13 @@ Respond with exactly this JSON shape:
     : `Content:\n${contentPreview}`;
 
   try {
-    const response = await fetch(OLLAMA_API_URL, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${apiKey}`,
-      },
-      body: JSON.stringify({
-        model: "glm-5.1:cloud",
-        messages: [
-          { role: "system", content: systemPrompt },
-          { role: "user", content: userPrompt },
-        ],
-        stream: false,
-      }),
-    });
+    const response = await callOrigen(
+      [{ role: "user", content: userPrompt }],
+      undefined,
+      blogConfig(systemPrompt),
+    );
 
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error("Ollama API error:", response.status, errorText);
-      return NextResponse.json(
-        { error: `Ollama API returned ${response.status}` },
-        { status: 502 }
-      );
-    }
-
-    const data: { message?: { content?: string }; choices?: { message?: { content?: string } }[] } = await response.json();
-    const rawContent = data.message?.content ?? data.choices?.[0]?.message?.content ?? "";
+    const rawContent = response.message;
 
     // Extract JSON from the response (handle markdown-wrapped JSON)
     let jsonStr = rawContent;
@@ -99,11 +65,9 @@ Respond with exactly this JSON shape:
       slug: suggestion.slug,
       excerpt: suggestion.excerpt,
     });
-  } catch (err: any) {
-    console.error("AI suggest error:", err);
-    return NextResponse.json(
-      { error: "Failed to get AI suggestion" },
-      { status: 500 }
-    );
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error("AI suggest error:", message);
+    return NextResponse.json({ error: "Failed to get AI suggestion", detail: message }, { status: 500 });
   }
 }

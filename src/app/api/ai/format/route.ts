@@ -1,25 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
-
-const OLLAMA_API_URL = "https://ollama.com/api/chat";
-const MAX_TIMEOUT_MS = 300_000; // 5 min total
-const MAX_CONTINUATIONS = 4; // max "continue" rounds per chunk
-const MODEL = "glm-5.1:cloud";
-
-function getOllamaApiKey(): string | undefined {
-  try {
-    const { getCloudflareContext } = require("@opennextjs/cloudflare");
-    const ctx = getCloudflareContext();
-    return ctx.env?.OLLAMA_API_KEY as string | undefined;
-  } catch {
-    return process.env.OLLAMA_API_KEY;
-  }
-}
+import { streamOrigen } from "@moikapy/origen";
+import type { StreamEvent } from "@moikapy/origen";
+import { blogConfig } from "@/lib/origen";
 
 export const dynamic = "force-dynamic";
 
+const MAX_TIMEOUT_MS = 300_000; // 5 min total
+
 /**
  * Detect if output looks truncated — ends mid-sentence, mid-word, or without proper closing.
- * Returns true if the text seems like it was cut off before completing the formatting.
  */
 function looksTruncated(text: string): boolean {
   const trimmed = text.trimEnd();
@@ -44,77 +33,6 @@ function looksTruncated(text: string): boolean {
   return false;
 }
 
-/**
- * Call the Ollama chat API, streaming each token via onToken callback.
- * Returns the full accumulated text when the model signals done.
- */
-async function callModel(
-  apiKey: string,
-  messages: Array<{ role: string; content: string }>,
-  signal: AbortSignal,
-  onToken: (token: string) => void,
-): Promise<string> {
-  const response = await fetch(OLLAMA_API_URL, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: MODEL,
-      messages,
-      stream: true,
-      think: false, // Disable chain-of-thought — it eats the token budget before content starts
-      options: { num_predict: 8192 },
-    }),
-    signal,
-  });
-
-  if (!response.ok) {
-    const errorText = await response.text().catch(() => "");
-    throw new Error(`AI returned ${response.status}: ${errorText.slice(0, 200)}`);
-  }
-
-  if (!response.body) {
-    throw new Error("No response stream");
-  }
-
-  const reader = response.body.getReader();
-  const decoder = new TextDecoder();
-  let buffer = "";
-  let fullText = "";
-
-  while (true) {
-    const { done, value } = await reader.read();
-    if (done) break;
-
-    buffer += decoder.decode(value, { stream: true });
-    const lines = buffer.split("\n");
-    buffer = lines.pop() || "";
-
-    for (const line of lines) {
-      const trimmed = line.trim();
-      if (!trimmed) continue;
-
-      try {
-        const parsed = JSON.parse(trimmed);
-        const token = parsed.message?.content ?? "";
-        if (token) {
-          fullText += token;
-          onToken(token);
-        }
-        if (parsed.done === true) {
-          return fullText;
-        }
-      } catch {
-        // Skip invalid JSON lines
-      }
-    }
-  }
-
-  return fullText;
-}
-
 interface FormatRequest {
   content: string;
   /** Previous chunk's formatted output — sent as context for style consistency */
@@ -124,22 +42,14 @@ interface FormatRequest {
 }
 
 /**
- * Agent-harness format endpoint.
+ * Format endpoint using Origen's agent loop.
  *
- * Instead of a single LLM call that truncates, this uses a **continuation loop**:
- * 1. Send the content for formatting
- * 2. If the output looks truncated, send a "continue" message
- * 3. Repeat until output looks complete or max continuations reached
- *
- * This is the "harness" pattern from LangChain — the model provides intelligence,
- * the harness provides the loop, truncation detection, and context management.
+ * Origen handles the model streaming and we add a continuation harness
+ * on top: if the output looks truncated, we send a "continue" message
+ * to get the rest. This gives us the full response for long blog posts
+ * without manual chunking.
  */
 export async function POST(request: NextRequest) {
-  const apiKey = getOllamaApiKey();
-  if (!apiKey) {
-    return NextResponse.json({ error: "Ollama API key not configured" }, { status: 500 });
-  }
-
   let body: FormatRequest;
   try {
     body = await request.json();
@@ -174,39 +84,40 @@ export async function POST(request: NextRequest) {
   const timeout = setTimeout(() => controller.abort(), MAX_TIMEOUT_MS);
 
   const encoder = new TextEncoder();
+  const MAX_CONTINUATIONS = 4;
 
   const stream = new ReadableStream({
     async start(streamController) {
       try {
-        // ── Agent Harness: Continuation Loop ──
-        // The harness wraps the model in a loop that detects truncated output
-        // and sends "continue" messages until the formatting is complete.
         let accumulated = "";
         let continuations = 0;
-
-        const messages: Array<{ role: string; content: string }> = [
-          { role: "system", content: systemPrompt },
+        const messages: Array<{ role: "user" | "assistant"; content: string }> = [
           { role: "user", content },
         ];
 
         while (continuations <= MAX_CONTINUATIONS) {
-          const roundText = await callModel(
-            apiKey,
-            messages,
-            controller.signal,
-            // Stream every token directly to the client
-            (token) => streamController.enqueue(encoder.encode(token)),
-          );
+          // Use Origen's streaming agent loop for each round
+          let roundText = "";
+          const config = blogConfig(systemPrompt, controller.signal);
+
+          for await (const event of streamOrigen(messages, undefined, config)) {
+            if (event.type === "text") {
+              roundText += event.content;
+              streamController.enqueue(encoder.encode(event.content));
+            } else if (event.type === "error") {
+              throw new Error(event.message);
+            }
+            // Ignore tool_call, tool_result, reasoning, citation events — no tools
+          }
 
           accumulated += roundText;
 
           // ── Truncation Detection ──
-          // If output looks complete, we're done
           if (!looksTruncated(accumulated)) {
             break;
           }
 
-          // Output looks truncated — ask the model to continue
+          // Output looks truncated — send a continuation round
           continuations++;
           console.log(`[ai/format] Truncated output detected, sending continuation ${continuations}${chunkLabel}`);
 
@@ -231,10 +142,11 @@ export async function POST(request: NextRequest) {
 
         clearTimeout(timeout);
         streamController.close();
-      } catch (err: any) {
+      } catch (err: unknown) {
         clearTimeout(timeout);
-        console.error("[ai/format] Error:", err);
-        if (err?.name === "AbortError") {
+        const message = err instanceof Error ? err.message : String(err);
+        console.error("[ai/format] Error:", message);
+        if (err instanceof Error && err.name === "AbortError") {
           streamController.enqueue(
             encoder.encode(`\n\n⏱️ _Format timed out${chunkLabel}. Partial result shown._`)
           );
