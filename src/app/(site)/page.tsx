@@ -29,7 +29,7 @@ export default async function Home() {
     <div className="mx-auto max-w-4xl px-4 sm:px-6 py-16">
       {/* Hero */}
       <section className="mb-16">
-        <h1 className="text-4xl font-bold tracking-tight sm:text-5xl">
+        <h1 className="text-4xl font-bold tracking-tight sm:text-5xl font-heading">
           {siteConfig.author}
         </h1>
         <p className="mt-2 text-lg font-medium text-primary">{siteConfig.tag}</p>
@@ -63,7 +63,7 @@ export default async function Home() {
       {/* Recent Posts */}
       <section>
         <div className="mb-6 flex items-center justify-between">
-          <h2 className="text-2xl font-bold tracking-tight">Recent Posts</h2>
+          <h2 className="text-2xl font-bold tracking-tight font-heading">Recent Posts</h2>
           {posts.length > 6 && (
             <a
               href="/blog"

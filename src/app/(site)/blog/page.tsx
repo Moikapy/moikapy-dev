@@ -33,7 +33,7 @@ export default async function BlogPage() {
         }}
       />
 
-      <h1 className="text-3xl font-bold tracking-tight">Blog</h1>
+      <h1 className="text-3xl font-bold tracking-tight font-heading">Blog</h1>
       <p className="mt-2 text-muted-foreground">
         Writing about AI engineering, gaming, and the projects I&apos;m building.
       </p>
@@ -43,7 +43,7 @@ export default async function BlogPage() {
         <div className="mt-6 flex flex-wrap gap-2">
           {tags.map((tag) => (
             <Link key={tag} href={`/blog/tag/${encodeURIComponent(tag)}`}>
-              <Badge variant="secondary" className="cursor-pointer hover:bg-secondary/80">
+              <Badge variant="secondary" className="cursor-pointer hover:bg-primary/10 hover:text-primary transition-colors">
                 {tag}
               </Badge>
             </Link>

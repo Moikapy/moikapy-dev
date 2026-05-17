@@ -128,7 +128,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
       )}
 
       <header className="mb-8">
-        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{post.title}</h1>
+        <h1 className="text-3xl font-bold tracking-tight sm:text-4xl font-heading">{post.title}</h1>
         <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
           <time dateTime={post.createdAt}>{format(new Date(post.createdAt), "MMMM d, yyyy")}</time>
           <span>·</span>
@@ -138,7 +138,7 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
           <div className="mt-4 flex flex-wrap gap-1.5">
             {tags.map((tag) => (
               <Link key={tag} href={`/blog/tag/${encodeURIComponent(tag)}`}>
-                <Badge variant="secondary" className="hover:bg-secondary/80 cursor-pointer">
+                <Badge variant="secondary" className="hover:bg-primary/10 hover:text-primary cursor-pointer transition-colors">
                   {tag}
                 </Badge>
               </Link>
