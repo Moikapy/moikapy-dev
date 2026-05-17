@@ -26,11 +26,11 @@ export async function TopicSpotlight({ insights }: TopicSpotlightProps) {
     <section className="mb-12">
       <div className="flex items-center gap-3 mb-4">
         <span className="text-xl">💡</span>
-        <h2 className="text-2xl font-bold tracking-tight">
+        <h2 className="text-2xl font-bold tracking-tight font-heading">
           Deep Dive: {insights.spotlight_tag.charAt(0).toUpperCase() + insights.spotlight_tag.slice(1)}
         </h2>
         <Link href={tagUrl}>
-          <Badge variant="secondary" className="cursor-pointer hover:bg-secondary/80">
+          <Badge variant="secondary" className="cursor-pointer hover:bg-primary/10 hover:text-primary transition-colors">
             View all →
           </Badge>
         </Link>

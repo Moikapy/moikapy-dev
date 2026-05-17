@@ -22,7 +22,7 @@ export async function TrendingThisWeek({ insights }: TrendingThisWeekProps) {
     <section className="mb-12">
       <div className="flex items-center gap-2 mb-4">
         <span className="text-xl">🔥</span>
-        <h2 className="text-2xl font-bold tracking-tight">Trending This Week</h2>
+        <h2 className="text-2xl font-bold tracking-tight font-heading text-foreground">Trending This Week</h2>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         {trendingPosts.map((post) =>

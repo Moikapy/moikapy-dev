@@ -22,13 +22,13 @@ export async function RelatedPosts({ slug, insights }: RelatedPostsProps) {
 
   return (
     <section className="mt-12 pt-8 border-t">
-      <h2 className="text-xl font-bold mb-4">Related Posts</h2>
+      <h2 className="text-xl font-bold mb-4 font-heading">Related Posts</h2>
       <div className="grid gap-3">
         {relatedPosts.map((post) => (
           <Link
             key={post.slug}
             href={`/blog/${post.slug}`}
-            className="group flex items-start gap-3 p-3 rounded-lg hover:bg-muted/50 transition-colors"
+            className="group flex items-start gap-3 p-3 rounded-lg hover:bg-accent/50 transition-colors"
           >
             <div className="flex-1 min-w-0">
               <h3 className="text-sm font-medium group-hover:text-primary transition-colors truncate">

@@ -36,7 +36,7 @@ export function PostCard({ post }: PostCardProps) {
           <span>·</span>
           <span>{post.readingTime}</span>
         </div>
-        <CardTitle className="text-lg leading-snug group-hover:text-primary transition-colors">
+        <CardTitle className="text-lg leading-snug group-hover:text-primary transition-colors font-heading">
           <Link href={`/blog/${post.slug}`} className="hover:underline">
             {post.title}
           </Link>

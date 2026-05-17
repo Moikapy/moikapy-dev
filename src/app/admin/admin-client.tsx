@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import type { CommunityInsights } from "@/lib/community-insights";
 import {
   Eye,
   FileText,
@@ -23,6 +24,7 @@ import {
   Link2,
   Check,
   AlertCircle,
+  Sparkles,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────
@@ -60,7 +62,7 @@ interface AnalyticsData {
 }
 
 type EditorMode = "list" | "edit" | "create";
-type AdminTab = "dashboard" | "posts" | "analytics";
+type AdminTab = "dashboard" | "posts" | "analytics" | "insights";
 
 // ── Helpers ───────────────────────────────────────────────────
 
@@ -176,6 +178,25 @@ export function AdminClient() {
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
   const [analyticsDays, setAnalyticsDays] = useState(30);
 
+  // Insights state
+  const [insights, setInsights] = useState<CommunityInsights | null>(null);
+  const [insightsLoading, setInsightsLoading] = useState(false);
+
+  const fetchInsights = useCallback(async () => {
+    setInsightsLoading(true);
+    try {
+      const res = await fetch("/api/ai/insights");
+      if (res.ok) {
+        const data: { status: string; insights: CommunityInsights } = await res.json();
+        setInsights(data.insights);
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setInsightsLoading(false);
+    }
+  }, []);
+
   const fetchPosts = useCallback(async () => {
     try {
       const res = await fetch("/api/posts?all=1");
@@ -215,6 +236,13 @@ export function AdminClient() {
       fetchAnalytics(analyticsDays);
     }
   }, [tab, analyticsDays, fetchAnalytics]);
+
+  // Fetch insights on insights tab
+  useEffect(() => {
+    if (tab === "insights") {
+      fetchInsights();
+    }
+  }, [tab, fetchInsights]);
 
   const existingSlugs = useMemo(() => new Set(posts.map((p) => p.slug)), [posts]);
 
@@ -413,6 +441,7 @@ export function AdminClient() {
     { id: "dashboard", label: "Dashboard", icon: <LayoutDashboard className="h-4 w-4" /> },
     { id: "posts", label: "Posts", icon: <FileText className="h-4 w-4" /> },
     { id: "analytics", label: "Analytics", icon: <BarChart3 className="h-4 w-4" /> },
+    { id: "insights", label: "Insights", icon: <Sparkles className="h-4 w-4" /> },
   ];
 
   // ── Dashboard View ────────────────────────────────────────
@@ -831,6 +860,104 @@ export function AdminClient() {
     );
   }
 
+  // ── Insights View ──────────────────────────────────────────
+
+  function renderInsights() {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-2xl font-bold font-heading flex items-center gap-2">
+            <Sparkles className="h-5 w-5 text-primary" />
+            Community Insights
+          </h2>
+          <Button variant="outline" size="sm" onClick={() => fetchInsights()} disabled={insightsLoading}>
+            {insightsLoading ? "Loading..." : "Refresh"}
+          </Button>
+        </div>
+
+        {insights ? (
+          <>
+            {/* Content Advice */}
+            {insights.content_advice && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm font-medium text-primary">✨ What to Write Next</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">{insights.content_advice}</p>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Trending Tags */}
+            {insights.trending_tags.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm font-medium">Trending Tags (30 days)</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="flex flex-wrap gap-2">
+                    {insights.trending_tags.map((tag) => (
+                      <Badge key={tag} variant="secondary" className="text-xs">{tag}</Badge>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Spotlight */}
+            {insights.spotlight_tag && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm font-medium">
+                    💡 Trending: {insights.spotlight_tag.charAt(0).toUpperCase() + insights.spotlight_tag.slice(1)}
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-xs text-muted-foreground">
+                    {insights.spotlight_slugs.length} posts in this category
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Trending Posts */}
+            {insights.trending_slugs.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="text-sm font-medium">🔥 Trending This Week</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {insights.trending_slugs.slice(0, 5).map((slug, i) => (
+                      <div key={slug} className="flex items-center gap-2 text-sm">
+                        <span className="text-muted-foreground">{i + 1}.</span>
+                        <a href={`/blog/${slug}`} className="text-foreground hover:text-primary transition-colors">
+                          {slug.replace(/-/g, " ").replace(/\b\w/g, c => c.toUpperCase())}
+                        </a>
+                      </div>
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
+            <p className="text-xs text-muted-foreground">
+              Last refreshed: {new Date(insights.updated_at).toLocaleString()}
+            </p>
+          </>
+        ) : insightsLoading ? (
+          <div className="flex items-center justify-center py-8">
+            <p className="text-muted-foreground">Loading community insights...</p>
+          </div>
+        ) : (
+          <div className="flex items-center justify-center py-8">
+            <p className="text-muted-foreground">No insights data yet. Click Refresh to generate.</p>
+          </div>
+        )}
+      </div>
+    );
+  }
   // ── Posts View ─────────────────────────────────────────────
 
   function renderPosts() {
@@ -1199,6 +1326,7 @@ export function AdminClient() {
         {tab === "dashboard" && renderDashboard()}
         {tab === "posts" && renderPosts()}
         {tab === "analytics" && renderAnalytics()}
+        {tab === "insights" && renderInsights()}
       </main>
     </div>
   );

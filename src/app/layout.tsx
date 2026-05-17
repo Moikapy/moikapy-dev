@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Lora } from "next/font/google";
 import "./globals.css";
 import { ServiceWorkerRegistrar } from "@/components/sw-registrar";
 import { siteConfig } from "@/lib/config";
 import { websiteJsonLd, personJsonLd } from "@/lib/jsonld";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ subsets: ["latin"], variable: "--font-sans" });
+const lora = Lora({ subsets: ["latin"], variable: "--font-serif" });
 
 export const metadata: Metadata = {
   title: {
@@ -71,7 +72,7 @@ export default function RootLayout({
           dangerouslySetInnerHTML={{ __html: JSON.stringify(personJsonLd()) }}
         />
       </head>
-      <body className={`${inter.className} min-h-screen bg-background text-foreground antialiased`}>
+      <body className={`${inter.variable} ${lora.variable} min-h-screen bg-background text-foreground antialiased`}>
         {children}
         <ServiceWorkerRegistrar />
         <script
