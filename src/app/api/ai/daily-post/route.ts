@@ -9,6 +9,18 @@ import { eq, sql } from "drizzle-orm";
 
 const DAILY_POST_KV_KEY = "daily_post_last_run";
 
+/** Clear the "generating" flag in KV. Fire-and-forget. */
+async function clearGeneratingFlag() {
+  try {
+    const { getCloudflareContext } = require("@opennextjs/cloudflare");
+    const ctx = getCloudflareContext();
+    const kv = ctx.env?.COMMUNITY_INSIGHTS as KVNamespace | undefined;
+    if (kv) await kv.delete("daily_post_generating");
+  } catch {
+    // KV not available
+  }
+}
+
 /**
  * Origen Daily Writer — researches trending topics and writes a draft blog post.
  *
@@ -77,6 +89,18 @@ export async function POST(request: NextRequest) {
     }
   } catch {
     // Column may not exist yet — proceed
+  }
+
+  // Set "generating" flag in KV so UI knows a post is being written
+  try {
+    const { getCloudflareContext } = require("@opennextjs/cloudflare");
+    const ctx = getCloudflareContext();
+    const kv = ctx.env?.COMMUNITY_INSIGHTS as KVNamespace | undefined;
+    if (kv) {
+      await kv.put("daily_post_generating", "true", { expirationTtl: 300 }); // 5 min TTL
+    }
+  } catch {
+    // KV not available
   }
 
   // Step 1: Read trending topics from community insights
@@ -154,19 +178,37 @@ Write a blog post about one of these topics. Be specific and factual. Do not fab
       blogConfig(systemPrompt),
     );
 
-    const content = response.message;
+    // Try to extract JSON from the response
+    // Models often wrap JSON in markdown code blocks or add prose before/after
+    let content = response.message;
+    console.log("[daily-post] Raw response length:", content.length, "starts with:", content.slice(0, 100));
+
+    // Strip markdown code blocks if present
+    const codeBlockMatch = content.match(/```(?:json)?\s*\n?([\s\S]*?)\n?```/);
+    if (codeBlockMatch) {
+      content = codeBlockMatch[1].trim();
+      console.log("[daily-post] Extracted from code block");
+    }
+
+    // Try to find JSON object
     const jsonMatch = content.match(/\{[\s\S]*\}/);
     if (jsonMatch) {
-      postData = JSON.parse(jsonMatch[0]);
-      console.log("[daily-post] Successfully generated post:", postData.title);
+      try {
+        postData = JSON.parse(jsonMatch[0]);
+        console.log("[daily-post] Successfully parsed JSON, title:", postData.title);
+      } catch (parseErr) {
+        console.error("[daily-post] JSON parse failed:", parseErr instanceof Error ? parseErr.message : String(parseErr));
+        console.error("[daily-post] Attempted to parse:", jsonMatch[0].slice(0, 500));
+      }
     } else {
-      console.error("[daily-post] No JSON found in response:", content.slice(0, 300));
+      console.error("[daily-post] No JSON found in response. Full response:", content.slice(0, 1000));
     }
   } catch (err) {
     console.error("[daily-post] Origen call failed:", err instanceof Error ? err.message : String(err));
   }
 
   if (!postData) {
+    await clearGeneratingFlag();
     return NextResponse.json(
       { status: "error", message: "Failed to generate blog post. The AI model did not return valid JSON. This may be a temporary issue — try again in a few minutes." },
       { status: 500 }
@@ -175,6 +217,7 @@ Write a blog post about one of these topics. Be specific and factual. Do not fab
 
   // Validate required fields
   if (!postData.title || !postData.slug || !postData.content) {
+    await clearGeneratingFlag();
     return NextResponse.json(
       { status: "error", message: "Missing required fields (title, slug, content)", data: postData },
       { status: 500 }
@@ -227,6 +270,7 @@ Write a blog post about one of these topics. Be specific and factual. Do not fab
       searchUsed: !!searchResults,
     });
   } catch (dbErr) {
+    await clearGeneratingFlag();
     console.error("[daily-post] Database error:", dbErr instanceof Error ? dbErr.message : String(dbErr));
     return NextResponse.json(
       { status: "error", message: `Database error: ${dbErr instanceof Error ? dbErr.message : String(dbErr)}` },
@@ -246,6 +290,7 @@ export async function GET(request: NextRequest) {
 
   let enabled = false;
   let lastRun: string | null = null;
+  let generating = false;
 
   try {
     const { getCloudflareContext } = require("@opennextjs/cloudflare");
@@ -254,6 +299,7 @@ export async function GET(request: NextRequest) {
     if (kv) {
       enabled = (await kv.get("auto_write_enabled")) === "true";
       lastRun = await kv.get(DAILY_POST_KV_KEY);
+      generating = (await kv.get("daily_post_generating")) === "true";
     }
   } catch {
     // KV not available
@@ -275,6 +321,7 @@ export async function GET(request: NextRequest) {
 
   return NextResponse.json({
     enabled,
+    generating,
     lastRun,
     todayPost: todayPost ? { slug: todayPost.slug, title: todayPost.title, published: todayPost.published } : null,
   });

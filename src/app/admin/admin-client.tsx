@@ -154,14 +154,16 @@ export function AdminClient() {
   const [autoWriteEnabled, setAutoWriteEnabled] = useState(false);
   const [autoWriteLoading, setAutoWriteLoading] = useState(false);
   const [autoWriteWriting, setAutoWriteWriting] = useState(false);
+  const [autoWriteGenerating, setAutoWriteGenerating] = useState(false);
   const [todayPost, setTodayPost] = useState<{ slug: string; title: string; published: boolean } | null>(null);
 
   const fetchAutoWriteStatus = useCallback(async () => {
     try {
       const res = await fetch("/api/ai/daily-post");
       if (res.ok) {
-        const data = await res.json() as { enabled: boolean; todayPost: { slug: string; title: string; published: boolean } | null; lastRun: string | null };
+        const data = await res.json() as { enabled: boolean; generating: boolean; todayPost: { slug: string; title: string; published: boolean } | null; lastRun: string | null };
         setAutoWriteEnabled(data.enabled);
+        setAutoWriteGenerating(data.generating);
         setTodayPost(data.todayPost);
       }
     } catch {
@@ -804,6 +806,17 @@ export function AdminClient() {
                 )}
               </Button>
             </div>
+            {autoWriteGenerating && !autoWriteWriting && (
+              <div className="rounded-md border border-amber-500/20 bg-amber-500/5 p-3 text-sm">
+                <p className="font-medium flex items-center gap-2">
+                  <span className="h-3 w-3 animate-spin rounded-full border-2 border-amber-500 border-t-transparent" />
+                  Generating post...
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Origen is researching and writing. This takes 30-60 seconds.
+                </p>
+              </div>
+            )}
             {todayPost && (
               <div className="rounded-md border border-primary/20 bg-primary/5 p-3 text-sm">
                 <p className="font-medium">Today's {todayPost.published ? "post" : "draft"}:</p>
