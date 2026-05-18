@@ -42,7 +42,7 @@ const socialNames: Record<SocialKey, string> = {
 
 const navPages = [
   { href: "/blog", label: "Blog" },
-  { href: "/kapy", label: "Kapy" },
+  { href: "/projects", label: "Projects" },
   { href: "/token", label: "$KAPY" },
   { href: "/traces", label: "Traces" },
   { href: "/contact", label: "Contact" },
