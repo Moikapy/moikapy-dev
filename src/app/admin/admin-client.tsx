@@ -1284,7 +1284,7 @@ export function AdminClient() {
   // ── Main Layout (sidebar + content) ────────────────────────
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-dvh">
       {/* Sidebar */}
       <aside className="hidden sm:flex w-56 flex-col border-r border-border bg-card">
         <div className="p-4 border-b border-border">
@@ -1322,7 +1322,7 @@ export function AdminClient() {
       </aside>
 
       {/* Mobile nav */}
-      <div className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border flex items-center justify-around py-2 px-4">
+      <div className="sm:hidden fixed bottom-0 left-0 right-0 z-50 bg-card border-t border-border flex items-center justify-around py-2 px-4 safe-bottom">
         {navItems.map(({ id, label, icon }) => (
           <button
             key={id}
@@ -1350,7 +1350,7 @@ export function AdminClient() {
       </div>
 
       {/* Main content */}
-      <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-20 sm:pb-8 overflow-auto">
+      <main className="flex-1 p-4 sm:p-6 lg:p-8 pb-20 sm:pb-8 safe-bottom-content overflow-auto">
         {/* Mobile header */}
         <div className="sm:hidden flex items-center justify-between mb-6">
           <h1 className="text-lg font-bold">Admin</h1>

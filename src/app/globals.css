@@ -179,3 +179,11 @@
   color: var(--muted-foreground);
   font-style: italic;
 }
+
+/* Mobile safe area — bottom nav padding for home indicator */
+.safe-bottom {
+  padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
+}
+.safe-bottom-content {
+  padding-bottom: calc(5rem + env(safe-area-inset-bottom));
+}
