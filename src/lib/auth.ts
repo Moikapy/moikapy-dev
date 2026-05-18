@@ -5,22 +5,108 @@ const SESSION_COOKIE = "moikapy_session";
 // Session lasts 7 days
 const SESSION_MAX_AGE = 60 * 60 * 24 * 7;
 
-async function hashPassword(password: string): Promise<string> {
+// ── Password Hashing (PBKDF2 with salt) ────────────────────────
+
+const PBKDF2_ITERATIONS = 100_000;
+
+/**
+ * Hash a password with PBKDF2-SHA256 and a random salt.
+ * Returns format: pbkdf2:iterations:salt:hash
+ * This replaces the old SHA-256 plain hash.
+ */
+export async function hashPassword(password: string): Promise<string> {
   const encoder = new TextEncoder();
-  const data = encoder.encode(password);
-  const hashBuffer = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(hashBuffer))
+  const salt = crypto.getRandomValues(new Uint8Array(16));
+  const saltHex = Array.from(salt).map((b) => b.toString(16).padStart(2, "0")).join("");
+
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(password),
+    "PBKDF2",
+    false,
+    ["deriveBits"]
+  );
+
+  const derivedBits = await crypto.subtle.deriveBits(
+    {
+      name: "PBKDF2",
+      salt,
+      iterations: PBKDF2_ITERATIONS,
+      hash: "SHA-256",
+    },
+    keyMaterial,
+    256
+  );
+
+  const hashHex = Array.from(new Uint8Array(derivedBits))
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
+
+  return `pbkdf2:${PBKDF2_ITERATIONS}:${saltHex}:${hashHex}`;
 }
 
-async function verifyPassword(password: string, hash: string): Promise<boolean> {
-  const inputHash = await hashPassword(password);
+/**
+ * Verify a password against a stored hash.
+ * Supports both new PBKDF2 format and legacy SHA-256 format (auto-migrates).
+ */
+export async function verifyPassword(password: string, storedHash: string): Promise<boolean> {
+  // Legacy SHA-256 format (plain hex, 64 chars)
+  if (!storedHash.startsWith("pbkdf2:")) {
+    const encoder = new TextEncoder();
+    const inputHash = await crypto.subtle.digest("SHA-256", encoder.encode(password));
+    const inputHex = Array.from(new Uint8Array(inputHash))
+      .map((b) => b.toString(16).padStart(2, "0"))
+      .join("");
+    // Constant-time comparison
+    if (inputHex.length !== storedHash.length) return false;
+    let result = 0;
+    for (let i = 0; i < inputHex.length; i++) {
+      result |= inputHex.charCodeAt(i) ^ storedHash.charCodeAt(i);
+    }
+    return result === 0;
+  }
+
+  // PBKDF2 format: pbkdf2:iterations:salt:hash
+  const parts = storedHash.split(":");
+  if (parts.length !== 4) return false;
+  const [, iterStr, saltHex, expectedHash] = parts;
+  const iterations = parseInt(iterStr, 10);
+
+  // Decode salt from hex
+  const saltBytes = new Uint8Array(saltHex.length / 2);
+  for (let i = 0; i < saltHex.length; i += 2) {
+    saltBytes[i / 2] = parseInt(saltHex.slice(i, i + 2), 16);
+  }
+
+  const encoder = new TextEncoder();
+  const keyMaterial = await crypto.subtle.importKey(
+    "raw",
+    encoder.encode(password),
+    "PBKDF2",
+    false,
+    ["deriveBits"]
+  );
+
+  const derivedBits = await crypto.subtle.deriveBits(
+    {
+      name: "PBKDF2",
+      salt: saltBytes,
+      iterations,
+      hash: "SHA-256",
+    },
+    keyMaterial,
+    256
+  );
+
+  const inputHash = Array.from(new Uint8Array(derivedBits))
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+
   // Constant-time comparison
-  if (inputHash.length !== hash.length) return false;
+  if (inputHash.length !== expectedHash.length) return false;
   let result = 0;
   for (let i = 0; i < inputHash.length; i++) {
-    result |= inputHash.charCodeAt(i) ^ hash.charCodeAt(i);
+    result |= inputHash.charCodeAt(i) ^ expectedHash.charCodeAt(i);
   }
   return result === 0;
 }

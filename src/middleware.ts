@@ -11,6 +11,20 @@ function withSecurityHeaders(response: NextResponse): NextResponse {
   response.headers.set("X-XSS-Protection", "0"); // Modern approach: let browsers handle XSS natively
   response.headers.set("Referrer-Policy", "strict-origin-when-cross-origin");
   response.headers.set("Permissions-Policy", "camera=(), microphone=(self), geolocation=()");
+  response.headers.set(
+    "Content-Security-Policy",
+    "default-src 'self'; " +
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://static.cloudflareinsights.com https://challenges.cloudflare.com; " +
+    "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
+    "font-src 'self' https://fonts.gstatic.com; " +
+    "img-src 'self' data: blob:; " +
+    "connect-src 'self' https://openrouter.ai https://*.cloudflare.com; " +
+    "media-src 'self' blob:; " +
+    "frame-src 'none'; " +
+    "form-action 'self'; " +
+    "base-uri 'self';"
+  );
+  response.headers.set("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload");
   response.headers.delete("X-Powered-By");
   return response;
 }
