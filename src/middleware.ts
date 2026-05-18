@@ -18,7 +18,7 @@ function withSecurityHeaders(response: NextResponse): NextResponse {
     "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; " +
     "font-src 'self' https://fonts.gstatic.com; " +
     "img-src 'self' data: blob:; " +
-    "connect-src 'self' https://openrouter.ai https://*.cloudflare.com; " +
+    "connect-src 'self' https://openrouter.ai https://*.cloudflare.com https://cloudflareinsights.com https://static.cloudflareinsights.com; " +
     "media-src 'self' blob:; " +
     "frame-src 'none'; " +
     "form-action 'self'; " +

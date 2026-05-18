@@ -68,7 +68,7 @@ export async function POST(request: NextRequest) {
     const existing = await db
       .select()
       .from(posts)
-      .where(sql`date(${posts.createdAt}) = ${today} AND ${posts.autoWritten} = 1`)
+      .where(sql`${posts.createdAt} LIKE ${today + '%'} AND ${posts.autoWritten} = 1`)
       .limit(1);
 
     if (existing.length > 0 && !force) {
@@ -226,7 +226,7 @@ export async function GET(request: NextRequest) {
     const result = await db
       .select()
       .from(posts)
-      .where(sql`date(${posts.createdAt}) = ${today} AND ${posts.autoWritten} = 1`)
+      .where(sql`${posts.createdAt} LIKE ${today + '%'} AND ${posts.autoWritten} = 1`)
       .limit(1);
     todayPost = result[0] || null;
   } catch {
