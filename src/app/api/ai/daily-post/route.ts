@@ -87,9 +87,11 @@ export async function POST(request: NextRequest) {
   // Step 2: Web search for facts on the top trending topic
   let searchResults = "";
   const searchTopic = trendingTags[0] || "technology";
+  const today = new Date().toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
+  const currentYear = new Date().getFullYear();
   try {
     console.log("[daily-post] Searching for:", searchTopic);
-    const searchUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent(searchTopic + " latest news 2025")}&format=json&no_html=1&skip_disambig=1`;
+    const searchUrl = `https://api.duckduckgo.com/?q=${encodeURIComponent(searchTopic + " latest news " + currentYear)}&format=json&no_html=1&skip_disambig=1`;
     const searchResp = await fetch(searchUrl, {
       headers: { "User-Agent": "moikapy-blog/1.0" },
     });
@@ -126,7 +128,9 @@ RULES:
 - Length: 600-1200 words. Concise beats padded.
 - End with: "Written by Origen ⚡ — AI-powered research and writing."
 - Choose your own title, slug, and tags. Slug must be URL-safe (lowercase, hyphens).
-- You MUST respond with valid JSON only. No markdown, no explanation. Shape: {"title": "...", "slug": "...", "excerpt": "...", "content": "...", "tags": ["..."]}`;
+- You MUST respond with valid JSON only. No markdown, no explanation. Shape: {"title": "...", "slug": "...", "excerpt": "...", "content": "...", "tags": ["..."]}
+
+Today's date: ${today}`;
 
   const userPrompt = searchResults
     ? `The trending topics on this blog are: ${topTags}.
