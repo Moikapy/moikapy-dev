@@ -33,9 +33,17 @@ export async function middleware(request: NextRequest) {
 
   // AI routes require auth regardless of method
   if (request.nextUrl.pathname.startsWith("/api/ai/")) {
-    // Allow cron triggers with Cf-Auth-Token
-    const cronSecret = process.env.CRON_SECRET;
-    if (cronSecret && request.headers.get("Cf-Auth-Token") === cronSecret) {
+    // Allow cron triggers with Cf-Auth-Token (Cloudflare cron auth)
+    let isCron = false;
+    try {
+      const { getCloudflareContext } = require("@opennextjs/cloudflare");
+      const ctx = getCloudflareContext();
+      const cronSecret = ctx.env.CRON_SECRET as string | undefined;
+      isCron = !!cronSecret && request.headers.get("Cf-Auth-Token") === cronSecret;
+    } catch {
+      // Not in CF context — cron auth unavailable
+    }
+    if (isCron) {
       return withSecurityHeaders(NextResponse.next());
     }
     const authenticated = await isAuthenticated(request);

@@ -3,6 +3,7 @@ import { callOrigen } from "@moikapy/origen";
 import { blogConfig } from "@/lib/origen";
 import { getCommunityInsights, setCommunityInsights, getFallbackInsights } from "@/lib/community-insights";
 import { getTrendingTags, getTrendingPosts, getPostsByTag, getCoOccurrence } from "@/lib/community-insights";
+import { isAuthenticated } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
@@ -17,18 +18,22 @@ export const dynamic = "force-dynamic";
  *  2. Fallback: if Origen fails, uses pure D1 queries (no LLM)
  */
 export async function GET(request: NextRequest) {
-  // Auth check — only admin or cron can refresh
-  const authHeader = request.headers.get("Authorization");
-  const cronSecret = process.env.CRON_SECRET;
+  // Auth check — only admin or cron can refresh insights
+  // Cron triggers pass Cf-Auth-Token header (set in wrangler.toml)
+  let isCron = false;
+  try {
+    const { getCloudflareContext } = require("@opennextjs/cloudflare");
+    const ctx = getCloudflareContext();
+    const cronSecret = ctx.env.CRON_SECRET as string | undefined;
+    isCron = !!cronSecret && request.headers.get("Cf-Auth-Token") === cronSecret;
+  } catch {
+    // Not in CF context
+  }
 
-  // Cron triggers pass a Cf-Auth-Token header
-  const isCron = request.headers.get("Cf-Auth-Token") === cronSecret;
-  const isAdmin = authHeader?.startsWith("Bearer "); // Admin auth handled by middleware
+  const isAdmin = await isAuthenticated(request);
 
-  // Allow cron triggers and admin requests
   if (!isCron && !isAdmin) {
-    // Also allow unauthenticated for now (will add auth later)
-    // TODO: Add proper admin auth check
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
   try {
