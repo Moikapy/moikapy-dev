@@ -17,19 +17,19 @@ interface PostCardProps {
 }
 
 export function PostCard({ post }: PostCardProps) {
+  const imageSrc = post.coverImage || "/capybara-256.webp";
+
   return (
     <Card className="group transition-all hover:border-primary/50 hover:shadow-md overflow-hidden">
-      {post.coverImage && (
-        <Link href={`/blog/${post.slug}`} className="block">
-          <div className="aspect-[2/1] overflow-hidden">
-            <img
-              src={post.coverImage}
-              alt={post.title}
-              className="w-full h-full object-cover transition-transform group-hover:scale-105"
-            />
-          </div>
-        </Link>
-      )}
+      <Link href={`/blog/${post.slug}`} className="block">
+        <div className="aspect-[2/1] overflow-hidden bg-muted">
+          <img
+            src={imageSrc}
+            alt={post.title}
+            className={`w-full h-full transition-transform group-hover:scale-105 ${post.coverImage ? "object-cover" : "object-contain p-4"}`}
+          />
+        </div>
+      </Link>
       <CardHeader className="pb-3">
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <time dateTime={post.date}>{format(new Date(post.date), "MMM d, yyyy")}</time>
