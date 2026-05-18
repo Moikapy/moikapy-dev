@@ -153,6 +153,7 @@ export function AdminClient() {
   // Auto-write state
   const [autoWriteEnabled, setAutoWriteEnabled] = useState(false);
   const [autoWriteLoading, setAutoWriteLoading] = useState(false);
+  const [autoWriteWriting, setAutoWriteWriting] = useState(false);
   const [todayPost, setTodayPost] = useState<{ slug: string; title: string; published: boolean } | null>(null);
 
   const fetchAutoWriteStatus = useCallback(async () => {
@@ -188,16 +189,23 @@ export function AdminClient() {
 
   const triggerDailyPost = useCallback(async () => {
     setAutoWriteLoading(true);
+    setAutoWriteWriting(true);
     try {
       const res = await fetch("/api/ai/daily-post?force=true", { method: "POST" });
-      const data = await res.json() as { post?: { slug: string; title: string } };
+      const data = await res.json() as { status: string; post?: { slug: string; title: string }; message?: string };
       if (data.post) {
         setTodayPost({ slug: data.post.slug, title: data.post.title, published: false });
+        fetchPosts(); // Refresh the posts list so the draft appears
+      } else if (data.status === "already_written") {
+        // Already written today — that's fine
+      } else if (data.status === "disabled") {
+        // Auto-write is off
       }
     } catch {
       // silently fail
     } finally {
       setAutoWriteLoading(false);
+      setAutoWriteWriting(false);
     }
   }, []);
 
@@ -777,21 +785,28 @@ export function AdminClient() {
                 disabled={autoWriteLoading}
                 className="h-7 text-xs"
               >
-                {autoWriteEnabled ? "Enabled" : "Disabled"}
+                {autoWriteEnabled ? "✓ Enabled" : "Disabled"}
               </Button>
               <Button
                 variant="outline"
                 size="sm"
                 onClick={triggerDailyPost}
-                disabled={autoWriteLoading}
+                disabled={autoWriteWriting}
                 className="h-7 text-xs"
               >
-                Write Now
+                {autoWriteWriting ? (
+                  <span className="flex items-center gap-1.5">
+                    <span className="h-3 w-3 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                    Writing...
+                  </span>
+                ) : (
+                  "Write Now"
+                )}
               </Button>
             </div>
             {todayPost && (
               <div className="rounded-md border border-primary/20 bg-primary/5 p-3 text-sm">
-                <p className="font-medium">Today's draft:</p>
+                <p className="font-medium">Today's {todayPost.published ? "post" : "draft"}:</p>
                 <a
                   href={`/blog/${todayPost.slug}`}
                   target="_blank"
