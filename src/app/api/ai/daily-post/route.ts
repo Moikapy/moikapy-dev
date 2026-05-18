@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { callOrigen } from "@moikapy/origen";
-import { blogConfig } from "@/lib/origen";
+import { blogConfig, blogConfigWithTools } from "@/lib/origen";
 import { webSearchTool } from "@/lib/web-search-tool";
 import { getCommunityInsights } from "@/lib/community-insights";
 import { getDb } from "@/db/connection";
@@ -121,11 +121,7 @@ Remember: respond with valid JSON only. Shape: {"title": "...", "slug": "...", "
         },
       ],
       undefined,
-      {
-        ...blogConfig(systemPrompt),
-        tools: [webSearchTool],
-        maxSteps: 6,
-      }
+      blogConfigWithTools(systemPrompt, [webSearchTool]),
     );
 
     const content = response.message;
