@@ -9,6 +9,8 @@ export const posts = sqliteTable("posts", {
   content: text("content").notNull(),
   tags: text("tags").notNull().default("[]"), // JSON array stored as text
   published: integer("published", { mode: "boolean" }).notNull().default(false),
+  author: text("author").notNull().default("Moikapy"),
+  autoWritten: integer("auto_written", { mode: "boolean" }).notNull().default(false),
   createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
   updatedAt: text("updated_at").notNull().$defaultFn(() => new Date().toISOString()),
 });

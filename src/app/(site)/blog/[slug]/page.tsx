@@ -151,6 +151,12 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
       <header className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight sm:text-4xl font-heading">{post.title}</h1>
         <div className="mt-3 flex items-center gap-2 text-sm text-muted-foreground">
+          {post.author && post.author !== "Moikapy" && (
+            <>
+              <span className="font-medium text-foreground/80">{post.author} ⚡</span>
+              <span>·</span>
+            </>
+          )}
           <time dateTime={post.createdAt}>{format(new Date(post.createdAt), "MMMM d, yyyy")}</time>
           <span>·</span>
           <span>{post.readingTime}</span>

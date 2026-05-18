@@ -6,6 +6,8 @@ export interface PostData {
   content: string;
   tags: string[];
   published: boolean;
+  author: string;
+  autoWritten: boolean;
   createdAt: string;
   updatedAt: string;
   readingTime: string;

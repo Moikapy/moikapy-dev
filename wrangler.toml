@@ -24,9 +24,11 @@ binding = "COMMUNITY_INSIGHTS"
 id = "7afeb79a055b4290a9ccf88b94b2308a"
 preview_id = "4e95667285b043fea2ec49624f0fa4fe"
 
-# Cron triggers for community insights refresh
+# Cron triggers
 [triggers]
-crons = ["*/30 * * * *"]
+crons = ["*/30 * * * *", "0 11 * * *"]
+# */30 = community insights every 30 min
+# 0 11 = daily post at 11:00 UTC (6:00 AM ET)
 
 # Secrets (set via `wrangler secret put`):
 #   ADMIN_PASSWORD_HASH  - SHA-256 hash of your admin password

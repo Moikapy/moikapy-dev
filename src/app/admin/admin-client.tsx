@@ -150,6 +150,57 @@ export function AdminClient() {
   const [insights, setInsights] = useState<CommunityInsights | null>(null);
   const [insightsLoading, setInsightsLoading] = useState(false);
 
+  // Auto-write state
+  const [autoWriteEnabled, setAutoWriteEnabled] = useState(false);
+  const [autoWriteLoading, setAutoWriteLoading] = useState(false);
+  const [todayPost, setTodayPost] = useState<{ slug: string; title: string; published: boolean } | null>(null);
+
+  const fetchAutoWriteStatus = useCallback(async () => {
+    try {
+      const res = await fetch("/api/ai/daily-post");
+      if (res.ok) {
+        const data = await res.json() as { enabled: boolean; todayPost: { slug: string; title: string; published: boolean } | null; lastRun: string | null };
+        setAutoWriteEnabled(data.enabled);
+        setTodayPost(data.todayPost);
+      }
+    } catch {
+      // silently fail
+    }
+  }, []);
+
+  const toggleAutoWrite = useCallback(async (enabled: boolean) => {
+    setAutoWriteLoading(true);
+    try {
+      const res = await fetch("/api/ai/daily-post", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ enabled }),
+      });
+      if (res.ok) {
+        setAutoWriteEnabled(enabled);
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setAutoWriteLoading(false);
+    }
+  }, []);
+
+  const triggerDailyPost = useCallback(async () => {
+    setAutoWriteLoading(true);
+    try {
+      const res = await fetch("/api/ai/daily-post?force=true", { method: "POST" });
+      const data = await res.json() as { post?: { slug: string; title: string } };
+      if (data.post) {
+        setTodayPost({ slug: data.post.slug, title: data.post.title, published: false });
+      }
+    } catch {
+      // silently fail
+    } finally {
+      setAutoWriteLoading(false);
+    }
+  }, []);
+
   const fetchInsights = useCallback(async () => {
     setInsightsLoading(true);
     try {
@@ -209,8 +260,9 @@ export function AdminClient() {
   useEffect(() => {
     if (tab === "insights") {
       fetchInsights();
+      fetchAutoWriteStatus();
     }
-  }, [tab, fetchInsights]);
+  }, [tab, fetchInsights, fetchAutoWriteStatus]);
 
   const existingSlugs = useMemo(() => new Set(posts.map((p) => p.slug)), [posts]);
 
@@ -704,6 +756,57 @@ export function AdminClient() {
             <p className="text-muted-foreground">No insights data yet. Click Refresh to generate.</p>
           </div>
         )}
+
+        {/* Auto-Write: Daily Origen Posts */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm font-medium flex items-center gap-2">
+              <span>⚡</span> Origen Daily Writer
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <p className="text-xs text-muted-foreground">
+              Origen researches trending topics each morning and writes a draft blog post.
+              Posts are <strong>never auto-published</strong> — you review and publish manually.
+            </p>
+            <div className="flex items-center gap-3">
+              <Button
+                variant={autoWriteEnabled ? "default" : "outline"}
+                size="sm"
+                onClick={() => toggleAutoWrite(!autoWriteEnabled)}
+                disabled={autoWriteLoading}
+                className="h-7 text-xs"
+              >
+                {autoWriteEnabled ? "Enabled" : "Disabled"}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={triggerDailyPost}
+                disabled={autoWriteLoading}
+                className="h-7 text-xs"
+              >
+                Write Now
+              </Button>
+            </div>
+            {todayPost && (
+              <div className="rounded-md border border-primary/20 bg-primary/5 p-3 text-sm">
+                <p className="font-medium">Today's draft:</p>
+                <a
+                  href={`/blog/${todayPost.slug}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary hover:underline"
+                >
+                  {todayPost.title}
+                </a>
+                <span className="text-xs text-muted-foreground ml-2">
+                  {todayPost.published ? "Published" : "Draft"}
+                </span>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
     );
   }
