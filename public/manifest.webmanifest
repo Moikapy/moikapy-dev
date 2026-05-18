@@ -1,0 +1,33 @@
+{
+  "name": "moikapy.dev",
+  "short_name": "moikapy",
+  "description": "AI engineering, gaming, and building cool stuff",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a1614",
+  "theme_color": "#e8c47c",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon-192.webp",
+      "sizes": "192x192",
+      "type": "image/webp",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-512.webp",
+      "sizes": "512x512",
+      "type": "image/webp",
+      "purpose": "any"
+    },
+    {
+      "src": "/icon-maskable-512.webp",
+      "sizes": "512x512",
+      "type": "image/webp",
+      "purpose": "maskable"
+    }
+  ],
+  "categories": ["technology", "blog"],
+  "screenshots": [],
+  "prefer_related_applications": false
+}

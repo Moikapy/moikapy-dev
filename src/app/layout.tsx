@@ -52,6 +52,13 @@ export const metadata: Metadata = {
     // AI agent discoverability
     "llms-txt": "/llms.txt",
   },
+  icons: {
+    icon: [
+      { url: "/icon-192.webp", sizes: "192x192", type: "image/webp" },
+      { url: "/icon-512.webp", sizes: "512x512", type: "image/webp" },
+    ],
+    apple: "/icon-192.webp",
+  },
 };
 
 export default function RootLayout({
@@ -62,6 +69,11 @@ export default function RootLayout({
   return (
     <html lang="en" className="dark">
       <head>
+        {/* PWA theme color — warm gold for dark mode */}
+        <meta name="theme-color" content="#1a1614" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+        <link rel="apple-touch-icon" href="/icon-192.webp" />
         {/* Global JSON-LD for web site and person schema */}
         <script
           type="application/ld+json"

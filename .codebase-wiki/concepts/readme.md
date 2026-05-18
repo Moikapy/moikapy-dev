@@ -1,3 +1,8 @@
+---
+id: readme
+type: concept
+last_updated: 2026-05-18
+---
 # README Summary
 
 > **Summary**: Project README documentation.

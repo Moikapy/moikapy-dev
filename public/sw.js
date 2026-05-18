@@ -1,4 +1,4 @@
-const CACHE_NAME = "moikapy-v2";
+const CACHE_NAME = "moikapy-v3";
 
 // Static shell — pre-cached on install
 const SHELL_ASSETS = ["/", "/blog"];
