@@ -1,6 +1,6 @@
 # admin-panel
 
-> **Summary**: Blog admin at /admin with tab navigation: Posts tab (CRUD editor with Tiptap, AI suggestions, ElevenLabs voice dictation), Analytics tab (D1-backed page views, top paths, referrer breakdown), and Insights tab (community-driven trending tags, posts, spotlight topics, Origen-generated content advice with KV cache). Cookie-based auth with SHA-256 hashed passwords. See also: [[analytics-api]], [[tiptap-editor]], [[community-insights]].
+> **Summary**: Blog admin at /admin with tab navigation: Posts (CRUD with Tiptap, AI suggestions, voice dictation), Analytics (D1-backed page views with 7/30/90 day selectors, top paths, referrer breakdown, unique visitors, shares), and Insights (community-driven trending tags, posts, spotlight, Origen content advice). Dashboard shows 6 stat cards: Page Views, Blog Views, Published, Referrers, Unique Visitors, Shares. Mobile: hidden sidebar + bottom tab nav.
 
 ## Location
 

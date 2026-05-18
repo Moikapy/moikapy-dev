@@ -28,7 +28,7 @@ export async function RelatedPosts({ slug, insights }: RelatedPostsProps) {
           <Link
             key={post.slug}
             href={`/blog/${post.slug}`}
-            className="group flex items-start gap-3 p-3 rounded-lg hover:bg-accent/50 transition-colors"
+            className="group flex items-start gap-3 p-3 rounded-lg hover:bg-accent/50 transition-colors truncate"
           >
             <div className="flex-1 min-w-0">
               <h3 className="text-sm font-medium group-hover:text-primary transition-colors truncate">
