@@ -56,9 +56,9 @@ const projects: Project[] = [
   },
   {
     title: "Scholar",
-    emoji: "🎓",
-    tagline: "AI-powered scholarship search",
-    description: "Find scholarships that match your profile. Deployed on Cloudflare Workers with D1 and full-text search. Part of the moikapy.dev ecosystem.",
+    emoji: "📖",
+    tagline: "AI-powered Bible study platform",
+    description: "Read, search, and understand scripture. Page-by-page reading, full-text search across translations, bookmarks, notes, and an AI study assistant with RAG over biblical text.",
     href: "https://scholar.moikapy.dev",
     tags: ["Next.js", "Cloudflare", "D1"],
     status: "live",
