@@ -6,7 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
+import { DashboardGrid } from "@/components/admin/widgets/dashboard-grid";
 import type { CommunityInsights } from "@/lib/community-insights";
+import type { PostData, AnalyticsData, AISuggestion, EditorMode, AdminTab } from "./admin-client-types";
 import {
   Eye,
   FileText,
@@ -28,44 +30,7 @@ import {
   Share2,
 } from "lucide-react";
 
-// ── Types ─────────────────────────────────────────────────────
-
-interface PostData {
-  slug: string;
-  title: string;
-  excerpt: string;
-  coverImage?: string;
-  content: string;
-  tags: string[];
-  published: boolean;
-  createdAt: string;
-  updatedAt: string;
-  readingTime: string;
-}
-
-interface AISuggestion {
-  title: string;
-  slug: string;
-  excerpt: string;
-}
-
-interface BlogViewCounts {
-  [slug: string]: { views: number; requests: number };
-}
-
-interface AnalyticsData {
-  period: { days: number; from: string; to: string };
-  totals: { views: number; requests: number };
-  uniqueViews?: number;
-  totalShares?: number;
-  blogViews: BlogViewCounts;
-  topPaths: { path: string; views: number; requests: number }[];
-  topReferrers: { referer: string; views: number }[];
-  debug?: string;
-}
-
-type EditorMode = "list" | "edit" | "create";
-type AdminTab = "dashboard" | "posts" | "analytics" | "insights";
+// ── Types (imported from admin-client-types.ts) ────────────────
 
 // ── Helpers ───────────────────────────────────────────────────
 
@@ -450,269 +415,20 @@ export function AdminClient() {
   // ── Dashboard View ────────────────────────────────────────
 
   function renderDashboard() {
-    const recentPosts = [...posts]
-      .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-      .slice(0, 5);
-
-    const blogPostViews = posts
-      .map((post) => ({
-        ...post,
-        views: analytics?.blogViews[post.slug]?.views ?? 0,
-      }))
-      .sort((a, b) => b.views - a.views)
-      .slice(0, 5);
-
-    const topReferrers = analytics?.topReferrers?.slice(0, 5) ?? [];
-    const maxRefViews = topReferrers.length > 0 ? topReferrers[0].views : 1;
-
     return (
-      <div className="space-y-6">
-        {/* KPI Cards */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Card className="border-l-4 border-l-primary">
-            <CardContent className="pt-4 pb-3 px-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Page Views</p>
-                  <p className="text-2xl font-bold mt-1">{formatNumber(analytics?.totals.views ?? 0)}</p>
-                </div>
-                <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
-                  <Eye className="h-4 w-4 text-primary" />
-                </div>
-              </div>
-              <p className="text-[11px] text-muted-foreground mt-2">Last {analyticsDays} days</p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-l-4 border-l-emerald-500">
-            <CardContent className="pt-4 pb-3 px-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Blog Views</p>
-                  <p className="text-2xl font-bold mt-1">{formatNumber(totalBlogViews)}</p>
-                </div>
-                <div className="h-9 w-9 rounded-lg bg-emerald-500/10 flex items-center justify-center">
-                  <TrendingUp className="h-4 w-4 text-emerald-500" />
-                </div>
-              </div>
-              <p className="text-[11px] text-muted-foreground mt-2">Post-specific views</p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-l-4 border-l-blue-500">
-            <CardContent className="pt-4 pb-3 px-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Published</p>
-                  <p className="text-2xl font-bold mt-1">{publishedCount}</p>
-                </div>
-                <div className="h-9 w-9 rounded-lg bg-blue-500/10 flex items-center justify-center">
-                  <Check className="h-4 w-4 text-blue-500" />
-                </div>
-              </div>
-              <p className="text-[11px] text-muted-foreground mt-2">{draftCount} draft{draftCount !== 1 ? "s" : ""}</p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-l-4 border-l-amber-500">
-            <CardContent className="pt-4 pb-3 px-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Referrers</p>
-                  <p className="text-2xl font-bold mt-1">{topReferrers.length}</p>
-                </div>
-                <div className="h-9 w-9 rounded-lg bg-amber-500/10 flex items-center justify-center">
-                  <Globe className="h-4 w-4 text-amber-500" />
-                </div>
-              </div>
-              <p className="text-[11px] text-muted-foreground mt-2">Traffic sources</p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-l-4 border-l-purple-500">
-            <CardContent className="pt-4 pb-3 px-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Unique Visitors</p>
-                  <p className="text-2xl font-bold mt-1">{formatNumber(analytics?.uniqueViews ?? 0)}</p>
-                </div>
-                <div className="h-9 w-9 rounded-lg bg-purple-500/10 flex items-center justify-center">
-                  <Eye className="h-4 w-4 text-purple-500" />
-                </div>
-              </div>
-              <p className="text-[11px] text-muted-foreground mt-2">Last {analyticsDays} days</p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-l-4 border-l-rose-500">
-            <CardContent className="pt-4 pb-3 px-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Shares</p>
-                  <p className="text-2xl font-bold mt-1">{formatNumber(analytics?.totalShares ?? 0)}</p>
-                </div>
-                <div className="h-9 w-9 rounded-lg bg-rose-500/10 flex items-center justify-center">
-                  <Share2 className="h-4 w-4 text-rose-500" />
-                </div>
-              </div>
-              <p className="text-[11px] text-muted-foreground mt-2">Post shares</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Two column: Recent Posts + Top Blog Views */}
-        <div className="grid gap-4 lg:grid-cols-2">
-          {/* Recent Posts */}
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium">Recent Posts</CardTitle>
-                <button
-                  onClick={() => setTab("posts")}
-                  className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
-                >
-                  View all <ArrowRight className="h-3 w-3" />
-                </button>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-0">
-              {recentPosts.length === 0 ? (
-                <p className="text-xs text-muted-foreground">No posts yet.</p>
-              ) : (
-                <div className="space-y-2.5">
-                  {recentPosts.map((post) => (
-                    <div
-                      key={post.slug}
-                      className="flex items-start gap-3 group cursor-pointer"
-                      onClick={() => startEdit(post)}
-                    >
-                      <div className="h-8 w-8 rounded-md bg-muted flex items-center justify-center shrink-0 mt-0.5">
-                        {post.published ? (
-                          <Check className="h-3.5 w-3.5 text-emerald-500" />
-                        ) : (
-                          <Clock className="h-3.5 w-3.5 text-amber-500" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium truncate group-hover:text-primary transition-colors">
-                          {post.title}
-                        </p>
-                        <p className="text-[11px] text-muted-foreground">
-                          {timeAgo(post.updatedAt)}
-                        </p>
-                      </div>
-                      <Badge variant={post.published ? "default" : "secondary"} className="text-[9px] shrink-0 mt-0.5">
-                        {post.published ? "Live" : "Draft"}
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Top Blog Posts by Views */}
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm font-medium">Top Posts by Views</CardTitle>
-                <button
-                  onClick={() => setTab("analytics")}
-                  className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1 transition-colors"
-                >
-                  Details <ArrowRight className="h-3 w-3" />
-                </button>
-              </div>
-            </CardHeader>
-            <CardContent className="pt-0">
-              {blogPostViews.every((p) => p.views === 0) ? (
-                <div className="flex flex-col items-center justify-center py-6 text-center">
-                  <TrendingUp className="h-8 w-8 text-muted-foreground/30 mb-2" />
-                  <p className="text-xs text-muted-foreground">No blog post views yet</p>
-                  <p className="text-[11px] text-muted-foreground/70 mt-0.5">Views will appear as visitors read your posts</p>
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  {blogPostViews.filter((p) => p.views > 0).map((post) => {
-                    const maxViews = blogPostViews[0]?.views || 1;
-                    const pct = (post.views / maxViews) * 100;
-                    return (
-                      <div key={post.slug} className="group">
-                        <div className="flex items-center justify-between text-xs mb-1">
-                          <span className="truncate font-medium group-hover:text-primary transition-colors">
-                            {post.title}
-                          </span>
-                          <span className="tabular-nums text-muted-foreground shrink-0 ml-2">
-                            {post.views.toLocaleString()}
-                          </span>
-                        </div>
-                        <div className="h-2 bg-muted rounded-full overflow-hidden">
-                          <div
-                            className="h-full bg-primary/70 rounded-full transition-all"
-                            style={{ width: `${Math.max(pct, 3)}%` }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </div>
-
-        {/* Top Referrers + Top Pages */}
-        <div className="grid gap-4 lg:grid-cols-2">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Traffic Sources</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              {topReferrers.length === 0 ? (
-                <p className="text-xs text-muted-foreground">No referrer data yet.</p>
-              ) : (
-                <div className="space-y-2.5">
-                  {topReferrers.map((ref) => (
-                    <ReferrerBar
-                      key={ref.referer}
-                      label={ref.referer === "direct" ? "Direct" : ref.referer}
-                      value={ref.views}
-                      max={maxRefViews}
-                    />
-                  ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-sm font-medium">Top Pages</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-0">
-              {(!analytics?.topPaths || analytics.topPaths.length === 0) ? (
-                <p className="text-xs text-muted-foreground">No page data yet.</p>
-              ) : (
-                <MiniBarChart
-                  data={analytics.topPaths.slice(0, 10).map((p) => ({
-                    label: p.path,
-                    value: p.views,
-                  }))}
-                  height={80}
-                />
-              )}
-              <div className="mt-2 space-y-1">
-                {analytics?.topPaths.slice(0, 5).map((p) => (
-                  <div key={p.path} className="flex items-center justify-between text-[11px]">
-                    <span className="text-muted-foreground truncate font-mono">{p.path}</span>
-                    <span className="tabular-nums shrink-0 ml-2">{formatNumber(p.views)}</span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
+      <>
+        <DashboardGrid
+          posts={posts}
+          analytics={analytics}
+          insights={insights}
+          analyticsDays={analyticsDays}
+          totalBlogViews={totalBlogViews}
+          publishedCount={publishedCount}
+          draftCount={draftCount}
+          onNavigatePosts={() => setTab("posts")}
+          onNavigateAnalytics={() => setTab("analytics")}
+          onStartEdit={(post) => startEdit(post)}
+        />
         {/* Debug */}
         {analytics?.debug && (
           <div className="rounded-lg border border-yellow-500/30 bg-yellow-500/5 p-3 text-sm text-yellow-600 dark:text-yellow-400 flex items-start gap-2">
@@ -720,7 +436,7 @@ export function AdminClient() {
             {analytics.debug}
           </div>
         )}
-      </div>
+      </>
     );
   }
 
