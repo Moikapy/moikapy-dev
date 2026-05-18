@@ -11,7 +11,9 @@ import { remark } from "remark";
 import html from "remark-html";
 import { ReactionBar } from "@/components/reaction-bar";
 import { RelatedPosts } from "@/components/related-posts";
+import { ShareButton } from "@/components/share-button";
 import { getCommunityInsights, getFallbackInsights } from "@/lib/community-insights";
+import { getCloudflareContext } from "@opennextjs/cloudflare";
 
 interface BlogPostPageProps {
   params: Promise<{ slug: string }>;
@@ -79,6 +81,25 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
     insights = await getFallbackInsights();
   }
 
+  // Load post stats (views + shares)
+  let postViews = 0;
+  let postShares = 0;
+  try {
+    const { env } = getCloudflareContext();
+    const db = env.DB;
+    if (db) {
+      const dateGeq = new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+      const [viewRow, shareRow] = await Promise.all([
+        db.prepare("SELECT COALESCE(SUM(views), 0) as views FROM page_views WHERE path = ? AND date >= ?").bind(`/blog/${slug}`, dateGeq).first(),
+        db.prepare("SELECT COALESCE(SUM(shares), 0) as shares FROM page_shares WHERE path = ? AND date >= ?").bind(`/blog/${slug}`, dateGeq).first(),
+      ]);
+      postViews = Number((viewRow as any)?.views ?? 0);
+      postShares = Number((shareRow as any)?.shares ?? 0);
+    }
+  } catch {
+    // Stats are non-critical
+  }
+
   return (
     <article className="mx-auto max-w-2xl px-4 sm:px-6 py-16">
       {/* JSON-LD for SEO and AI agents */}
@@ -133,6 +154,12 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
           <time dateTime={post.createdAt}>{format(new Date(post.createdAt), "MMMM d, yyyy")}</time>
           <span>·</span>
           <span>{post.readingTime}</span>
+          {postViews > 0 && (
+            <>
+              <span>·</span>
+              <span>{postViews.toLocaleString()} view{postViews !== 1 ? "s" : ""}</span>
+            </>
+          )}
         </div>
         {tags.length > 0 && (
           <div className="mt-4 flex flex-wrap gap-1.5">
@@ -154,9 +181,12 @@ export default async function BlogPostPage({ params }: BlogPostPageProps) {
         dangerouslySetInnerHTML={{ __html: htmlContent }}
       />
 
-      {/* Reactions */}
+      {/* Reactions & Share */}
       <div className="mt-12 pt-8 border-t border-border">
-        <h3 className="text-sm font-medium text-muted-foreground mb-3">How did this post make you feel?</h3>
+        <div className="flex items-center justify-between mb-3">
+          <h3 className="text-sm font-medium text-muted-foreground">How did this post make you feel?</h3>
+          <ShareButton slug={post.slug} title={post.title} shares={postShares} />
+        </div>
         <ReactionBar slug={post.slug} />
       </div>
 

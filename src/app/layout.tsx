@@ -94,7 +94,7 @@ export default function RootLayout({
         />
         <script
           dangerouslySetInnerHTML={{
-            __html: `if(typeof fetch!=="undefined"&&!location.pathname.startsWith("/admin")){fetch("/api/analytics/track",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({path:location.pathname,ref:document.referrer}),keepalive:true}).catch(function(){})}`,
+            __html: `if(typeof fetch!=="undefined"&&!location.pathname.startsWith("/admin")){var p=location.pathname;var k="v_"+p;var u=!sessionStorage.getItem(k);if(u)sessionStorage.setItem(k,"1");fetch("/api/analytics/track",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({path:p,ref:document.referrer,unique:u}),keepalive:true}).catch(function(){})}`,
           }}
         />
       </body>

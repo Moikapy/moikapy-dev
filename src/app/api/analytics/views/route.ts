@@ -75,6 +75,22 @@ export async function GET(request: NextRequest) {
       .bind(dateGeq)
       .all();
 
+    // Total unique views
+    const uniqueResult = await db
+      .prepare(
+        `SELECT COALESCE(SUM(unique_views), 0) as total_unique FROM page_views WHERE date >= ?`
+      )
+      .bind(dateGeq)
+      .first();
+
+    // Total shares
+    const shareResult = await db
+      .prepare(
+        `SELECT COALESCE(SUM(shares), 0) as total_shares FROM page_shares WHERE date >= ?`
+      )
+      .bind(dateGeq)
+      .first();
+
     const totalViews = Number(totalResult?.total_views ?? 0);
 
     const topPaths = (pathRows.results as { path: string; views: number }[]).map((r) => ({
@@ -148,6 +164,8 @@ export async function GET(request: NextRequest) {
         requests: cfTotalViews ?? totalViews,
       },
       d1Views: totalViews,
+      uniqueViews: Number(uniqueResult?.total_unique ?? 0),
+      totalShares: Number(shareResult?.total_shares ?? 0),
       blogViews,
       topPaths,
       topReferrers,

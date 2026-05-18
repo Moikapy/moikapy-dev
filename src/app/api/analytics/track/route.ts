@@ -32,8 +32,9 @@ export async function POST(request: NextRequest) {
   if (rateLimitResponse) return rateLimitResponse;
 
   try {
-    const body = (await request.json()) as { path?: string; ref?: string };
+    const body = (await request.json()) as { path?: string; ref?: string; unique?: boolean };
     const path: string | undefined = body.path;
+    const isUnique: boolean = body.unique === true;
     if (!path || typeof path !== "string") {
       return NextResponse.json({ error: "Missing path" }, { status: 400 });
     }
@@ -56,7 +57,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Batch both writes into a single D1 round-trip
-    await db.batch([
+    const statements = [
       db
         .prepare(
           `INSERT INTO page_views (path, date, views) VALUES (?, ?, 1)
@@ -69,7 +70,21 @@ export async function POST(request: NextRequest) {
            ON CONFLICT(referer, path, date) DO UPDATE SET views = views + 1`
         )
         .bind(referer, cleanPath, today),
-    ]);
+    ];
+
+    // Increment unique_views if this is a first visit in the session
+    if (isUnique) {
+      statements.push(
+        db
+          .prepare(
+            `INSERT INTO page_views (path, date, views, unique_views) VALUES (?, ?, 0, 1)
+             ON CONFLICT(path, date) DO UPDATE SET unique_views = unique_views + 1`
+          )
+          .bind(cleanPath, today)
+      );
+    }
+
+    await db.batch(statements);
 
     return NextResponse.json({ ok: true });
   } catch (err) {

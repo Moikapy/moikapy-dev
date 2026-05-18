@@ -25,6 +25,7 @@ export const pageViews = sqliteTable("page_views", {
   path: text("path").notNull(),
   date: text("date").notNull(),
   views: integer("views").notNull().default(0),
+  uniqueViews: integer("unique_views").notNull().default(0),
 });
 
 export const pageReferrers = sqliteTable("page_referrers", {
@@ -37,6 +38,12 @@ export const pageReferrers = sqliteTable("page_referrers", {
 export const postTags = sqliteTable("post_tags", {
   slug: text("slug").notNull().references(() => posts.slug, { onDelete: "cascade" }),
   tag: text("tag").notNull(),
+});
+
+export const pageShares = sqliteTable("page_shares", {
+  path: text("path").notNull(),
+  date: text("date").notNull().$defaultFn(() => new Date().toISOString().split("T")[0]),
+  shares: integer("shares").notNull().default(0),
 });
 
 export type Post = typeof posts.$inferSelect;

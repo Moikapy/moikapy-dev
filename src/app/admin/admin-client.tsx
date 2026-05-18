@@ -25,6 +25,7 @@ import {
   Check,
   AlertCircle,
   Sparkles,
+  Share2,
 } from "lucide-react";
 
 // ── Types ─────────────────────────────────────────────────────
@@ -55,6 +56,8 @@ interface BlogViewCounts {
 interface AnalyticsData {
   period: { days: number; from: string; to: string };
   totals: { views: number; requests: number };
+  uniqueViews?: number;
+  totalShares?: number;
   blogViews: BlogViewCounts;
   topPaths: { path: string; views: number; requests: number }[];
   topReferrers: { referer: string; views: number }[];
@@ -465,7 +468,7 @@ export function AdminClient() {
     return (
       <div className="space-y-6">
         {/* KPI Cards */}
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Card className="border-l-4 border-l-primary">
             <CardContent className="pt-4 pb-3 px-4">
               <div className="flex items-center justify-between">
@@ -523,6 +526,36 @@ export function AdminClient() {
                 </div>
               </div>
               <p className="text-[11px] text-muted-foreground mt-2">Traffic sources</p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-l-4 border-l-purple-500">
+            <CardContent className="pt-4 pb-3 px-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Unique Visitors</p>
+                  <p className="text-2xl font-bold mt-1">{formatNumber(analytics?.uniqueViews ?? 0)}</p>
+                </div>
+                <div className="h-9 w-9 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                  <Eye className="h-4 w-4 text-purple-500" />
+                </div>
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-2">Last {analyticsDays} days</p>
+            </CardContent>
+          </Card>
+
+          <Card className="border-l-4 border-l-rose-500">
+            <CardContent className="pt-4 pb-3 px-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Shares</p>
+                  <p className="text-2xl font-bold mt-1">{formatNumber(analytics?.totalShares ?? 0)}</p>
+                </div>
+                <div className="h-9 w-9 rounded-lg bg-rose-500/10 flex items-center justify-center">
+                  <Share2 className="h-4 w-4 text-rose-500" />
+                </div>
+              </div>
+              <p className="text-[11px] text-muted-foreground mt-2">Post shares</p>
             </CardContent>
           </Card>
         </div>
