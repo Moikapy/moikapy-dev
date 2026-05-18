@@ -88,29 +88,36 @@ export async function POST(request: NextRequest) {
   const topTags = trendingTags.slice(0, 3).join(", ");
 
   // Step 2: Origen researches and writes the post
-  const systemPrompt = `You are Origen, an AI writer for a tech blog. Your mission is to write well-researched, factual blog posts that glorify God and serve readers with truth.
+  // Try with web search first; fall back to writing without tools if the model doesn't support them
+  const systemPrompt = `You are Origen, an AI writer for a tech blog. Your mission is to write well-researched, factual blog posts that serve readers with truth.
 
 RULES:
-- Use the web_search tool to RESEARCH each topic before writing. Find at least 2 sources per claim.
 - Write in a warm, direct style. No corporate speak. Short sentences when making key points.
-- Every post must include specific facts, numbers, or quotes from your research — not vague generalizations.
+- Every post must include specific facts, numbers, or quotes — not vague generalizations.
 - If you're unsure about something, say so. Never fabricate sources or statistics.
-- Structure: Hook opening → Key facts (with sources) → Practical takeaway → Closing thought.
+- Structure: Hook opening → Key facts → Practical takeaway → Closing thought.
 - Length: 600-1200 words. Concise is better than padded.
-- End with a brief author note: "Written by Origen ⚡ — AI-powered research and writing."
+- End with: "Written by Origen ⚡ — AI-powered research and writing."
 - Choose your own title, slug, and tags. The slug should be URL-safe (lowercase, hyphens, no special chars).
-- Output valid JSON matching the PostPayload schema (see tool call).`;
+- You MUST respond with valid JSON only. No markdown, no explanation. Shape: {"title": "...", "slug": "...", "excerpt": "...", "content": "...", "tags": ["..."]}`;
 
+  let postData: any = null;
+  let usedWebSearch = false;
+
+  // Try with web search tools first
   try {
+    console.log("[daily-post] Attempting Origen call with web_search tool, top tags:", topTags);
     const response = await callOrigen(
       [
         {
           role: "user",
           content: `The trending topics on the blog right now are: ${topTags}.
 
-Research these topics using the web_search tool. Find specific, factual information with sources. Then write a blog post that serves readers with real, verified information — not hot takes or vague opinion.
+Research these topics using the web_search tool. Find specific, factual information with sources. Then write a blog post that serves readers with real, verified information.
 
-Pick ONE topic to focus on. Write about it with depth and specificity. Use your web_search tool at least twice — once to research the topic, and again to verify a key claim.`,
+Pick ONE topic to focus on. Write about it with depth and specificity. Use your web_search tool at least twice — once to research the topic, and again to verify a key claim.
+
+Remember: respond with valid JSON only. Shape: {"title": "...", "slug": "...", "excerpt": "...", "content": "...", "tags": ["..."]}`,
         },
       ],
       undefined,
@@ -121,32 +128,64 @@ Pick ONE topic to focus on. Write about it with depth and specificity. Use your 
       }
     );
 
-    // Parse the response as JSON
-    let postData: any;
-    try {
-      // Try to extract JSON from the response
-      const content = response.message;
-      // Find JSON object in the response
-      const jsonMatch = content.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error("No JSON found in response");
+    const content = response.message;
+    const jsonMatch = content.match(/\{[\s\S]*\}/);
+    if (jsonMatch) {
       postData = JSON.parse(jsonMatch[0]);
-    } catch (parseErr) {
-      console.error("[daily-post] Failed to parse Origen response as JSON:", parseErr);
-      return NextResponse.json(
-        { status: "error", message: "Failed to parse Origen response as JSON", raw: String(response.message || response).slice(0, 500) },
-        { status: 500 }
-      );
+      usedWebSearch = true;
+      console.log("[daily-post] Successfully generated post with web search");
     }
+  } catch (err) {
+    console.error("[daily-post] Origen with tools failed:", err instanceof Error ? err.message : String(err));
+  }
 
-    // Validate required fields
-    if (!postData.title || !postData.slug || !postData.content) {
-      return NextResponse.json(
-        { status: "error", message: "Missing required fields (title, slug, content)", data: postData },
-        { status: 500 }
+  // Fallback: write without tools if the tool call failed
+  if (!postData) {
+    try {
+      console.log("[daily-post] Falling back to Origen without web_search");
+      const response = await callOrigen(
+        [
+          {
+            role: "user",
+            content: `The trending topics on the blog right now are: ${topTags}.
+
+Write a blog post about one of these trending topics. Be specific and factual. Do not make up statistics or sources — if you're not sure about a fact, say so.
+
+Remember: respond with valid JSON only. Shape: {"title": "...", "slug": "...", "excerpt": "...", "content": "...", "tags": ["..."]}`,
+          },
+        ],
+        undefined,
+        blogConfig(systemPrompt),
       );
-    }
 
-    // Step 3: Save as draft to D1
+      const content = response.message;
+      const jsonMatch = content.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        postData = JSON.parse(jsonMatch[0]);
+        console.log("[daily-post] Successfully generated post without web search");
+      }
+    } catch (fallbackErr) {
+      console.error("[daily-post] Origen fallback also failed:", fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr));
+    }
+  }
+
+  if (!postData) {
+    return NextResponse.json(
+      { status: "error", message: "Failed to generate blog post. Both tool-assisted and fallback Origen calls failed." },
+      { status: 500 }
+    );
+  }
+
+  // Validate required fields
+  if (!postData.title || !postData.slug || !postData.content) {
+    return NextResponse.json(
+      { status: "error", message: "Missing required fields (title, slug, content)", data: postData },
+      { status: 500 }
+    );
+  }
+
+  // Step 3: Save as draft to D1
+  try {
     const db = getDb();
     const slug = postData.slug.toLowerCase().replace(/[^a-z0-9-]/g, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
 
@@ -156,7 +195,7 @@ Pick ONE topic to focus on. Write about it with depth and specificity. Use your 
 
     const tags = Array.isArray(postData.tags) ? postData.tags : [];
 
-    const [inserted] = await db.insert(posts).values({
+    await db.insert(posts).values({
       slug: finalSlug,
       title: postData.title,
       excerpt: postData.excerpt || postData.title,
@@ -165,7 +204,9 @@ Pick ONE topic to focus on. Write about it with depth and specificity. Use your 
       published: false, // ALWAYS draft — admin reviews before publishing
       author: "Origen",
       autoWritten: true,
-    }).returning();
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+    });
 
     // Insert tags
     if (tags.length > 0) {
@@ -174,23 +215,28 @@ Pick ONE topic to focus on. Write about it with depth and specificity. Use your 
       ).onConflictDoNothing();
     }
 
+    const inserted = await db.select().from(posts).where(eq(posts.slug, finalSlug)).limit(1);
+    const post = inserted[0];
+
     return NextResponse.json({
       status: "ok",
       post: {
-        id: inserted.id,
         slug: finalSlug,
         title: postData.title,
         excerpt: postData.excerpt || postData.title,
         author: "Origen",
         tags,
         published: false,
-        createdAt: inserted.createdAt,
+        createdAt: post?.createdAt ?? new Date().toISOString(),
       },
+      webSearchUsed: usedWebSearch,
     });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    console.error("[daily-post] Error:", msg);
-    return NextResponse.json({ status: "error", message: msg }, { status: 500 });
+  } catch (dbErr) {
+    console.error("[daily-post] Database error:", dbErr instanceof Error ? dbErr.message : String(dbErr));
+    return NextResponse.json(
+      { status: "error", message: `Database error: ${dbErr instanceof Error ? dbErr.message : String(dbErr)}` },
+      { status: 500 }
+    );
   }
 }
 
